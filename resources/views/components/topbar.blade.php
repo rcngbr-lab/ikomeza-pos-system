@@ -54,6 +54,19 @@
                 </a>
             @endif
 
+            <form method="POST" action="{{ route('logout') }}" class="shrink-0">
+                @csrf
+
+                <button
+                    type="submit"
+                    class="flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                    title="Logout"
+                >
+                    <span class="sm:hidden">OUT</span>
+                    <span class="hidden sm:inline">Logout</span>
+                </button>
+            </form>
+
             <div class="flex items-center gap-3 pl-1">
                 <div class="hidden text-right sm:block">
                     <p class="text-sm font-semibold leading-none text-slate-900">

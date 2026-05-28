@@ -75,5 +75,19 @@
                 </p>
             </div>
         </div>
+
+        <form method="POST" action="{{ route('logout') }}" class="mt-4">
+            @csrf
+
+            <button
+                type="submit"
+                class="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-3 py-3 text-sm font-black text-slate-200 transition hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-100"
+            >
+                <span class="flex h-7 min-w-7 items-center justify-center rounded-lg bg-slate-950 text-[10px] font-black text-slate-400">
+                    OUT
+                </span>
+                <span>Logout</span>
+            </button>
+        </form>
     </div>
 </div>
