@@ -34,7 +34,13 @@ class StockMovementController extends Controller
                 )
 
                 ->orWhere(
-                    'reference',
+                    'reference_type',
+                    'like',
+                    '%' . $request->search . '%'
+                )
+
+                ->orWhere(
+                    'reason',
                     'like',
                     '%' . $request->search . '%'
                 );

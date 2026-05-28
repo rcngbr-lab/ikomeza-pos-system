@@ -74,6 +74,25 @@
             text-decoration: none;
         }
 
+        .refund-banner {
+
+            border: 2px solid #991b1b;
+            color: #991b1b;
+            text-align: center;
+            padding: 8px;
+            margin: 10px 0;
+            font-size: 14px;
+            font-weight: 900;
+            letter-spacing: 1px;
+        }
+
+        .refund-note {
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
         @media print {
 
             .btn {
@@ -146,6 +165,16 @@
         {{ $sale->payment_method }}
 
     </p>
+
+    @if($sale->is_refunded || $sale->sale_status === 'REFUNDED')
+        <div class="refund-banner">
+            REFUNDED RECEIPT
+        </div>
+
+        <div class="refund-note">
+            Stock restored on {{ optional($sale->refunded_at)->format('d/m/Y H:i') ?? 'refund date' }}
+        </div>
+    @endif
 
     <div class="line"></div>
 

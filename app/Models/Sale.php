@@ -52,6 +52,26 @@ class Sale extends Model
 
     ];
 
+    protected $casts = [
+
+        'subtotal' => 'decimal:2',
+
+        'tax' => 'decimal:2',
+
+        'discount' => 'decimal:2',
+
+        'grand_total' => 'decimal:2',
+
+        'amount_paid' => 'decimal:2',
+
+        'change_amount' => 'decimal:2',
+
+        'is_refunded' => 'boolean',
+
+        'refunded_at' => 'datetime',
+
+    ];
+
     /*
     |--------------------------------------------------------------------------
     | ITEMS

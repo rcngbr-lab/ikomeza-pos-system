@@ -52,7 +52,11 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'http://localhost'),
+    'url' => preg_split('/\s+/', trim((string) env('APP_URL', 'http://localhost')))[0],
+
+    'asset_url' => env('ASSET_URL')
+        ? preg_split('/\s+/', trim((string) env('ASSET_URL')))[0]
+        : null,
 
     /*
     |--------------------------------------------------------------------------

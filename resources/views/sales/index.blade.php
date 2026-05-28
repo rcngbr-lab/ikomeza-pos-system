@@ -161,14 +161,31 @@
     }
 
     .status{
-        background:#16a34a;
-        color:white;
+        background:#dcfce7;
+        color:#166534;
         padding:6px 12px;
         border-radius:20px;
         font-size:12px;
         font-weight:700;
         display:inline-block;
-        text-transform:capitalize;
+        text-transform:uppercase;
+    }
+
+    .status-refunded{
+        background:#fee2e2;
+        color:#991b1b;
+    }
+
+    .status-completed{
+        background:#dcfce7;
+        color:#166534;
+    }
+
+    .status-note{
+        margin-top:6px;
+        color:#64748b;
+        font-size:12px;
+        font-weight:700;
     }
 
     .print-btn{
@@ -219,6 +236,23 @@
     border-radius:8px;
     font-weight:700;
 
+}
+
+.stock-restored-badge{
+
+    background:#dcfce7;
+    color:#166534;
+    padding:8px 12px;
+    border-radius:8px;
+    font-weight:700;
+
+}
+
+.refund-meta{
+    margin-top:6px;
+    color:#64748b;
+    font-size:12px;
+    font-weight:600;
 }
 
 
@@ -443,6 +477,12 @@
         <tbody>
 
             @forelse($sales as $sale)
+                @php
+                    $isRefunded = (bool) $sale->is_refunded || $sale->sale_status === 'REFUNDED';
+                    $statusLabel = $isRefunded
+                        ? 'REFUNDED'
+                        : ($sale->sale_status ?: 'COMPLETED');
+                @endphp
 
                 <tr>
 
@@ -451,7 +491,7 @@
                     </td>
 
                     <td>
-                        {{ $sale->invoice_number }}
+                        {{ $sale->receipt_no ?? 'N/A' }}
                     </td>
 
                     <td>
@@ -464,9 +504,15 @@
 
                     <td>
 
-                        <span class="status">
-                            {{ $sale->status }}
+                        <span class="status {{ $isRefunded ? 'status-refunded' : 'status-completed' }}">
+                            {{ str_replace('_', ' ', $statusLabel) }}
                         </span>
+
+                        @if($isRefunded)
+                            <div class="status-note">
+                                Stock restored
+                            </div>
+                        @endif
 
                     </td>
 
@@ -484,11 +530,21 @@
         Print
     </a>
 
-    @if($sale->is_refunded)
+    @if($isRefunded)
 
         <span class="refunded-badge">
             Refunded
         </span>
+
+        <span class="stock-restored-badge">
+            Stock restored
+        </span>
+
+        @if($sale->refunded_at)
+            <div class="refund-meta">
+                {{ $sale->refunded_at->format('d/m/Y H:i') }}
+            </div>
+        @endif
 
     @elseif(auth()->user()->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER'))
 

@@ -252,7 +252,9 @@ public function refund(Request $request, $id)
         );
     }
 
-    DB::transaction(function () use ($sale, $request) {
+    $restoredUnits = 0;
+
+    DB::transaction(function () use ($sale, $request, &$restoredUnits) {
         $refund = Refund::create([
 
             'sale_id' => $sale->id,
@@ -271,9 +273,9 @@ public function refund(Request $request, $id)
 
     foreach ($sale->items as $item) {
 
-        $product = Product::find(
-            $item->product_id
-        );
+        $product = Product::whereKey($item->product_id)
+            ->lockForUpdate()
+            ->first();
 
         if ($product) {
 
@@ -285,6 +287,7 @@ public function refund(Request $request, $id)
             );
 
             $product->refresh();
+            $restoredUnits += (int) $item->quantity;
 
             Stock::create([
                 'product_id' => $product->id,
@@ -306,7 +309,7 @@ public function refund(Request $request, $id)
                 'after_stock' => $product->stock,
                 'reference_type' => Refund::class,
                 'reference_id' => $refund->id,
-                'reason' => $request->refund_reason,
+                'reason' => trim('Refund for ' . $sale->receipt_no . ' ' . ($request->refund_reason ?? '')),
             ]);
         }
     }
@@ -330,7 +333,7 @@ public function refund(Request $request, $id)
 
     return back()->with(
         'success',
-        'Sale refunded successfully.'
+        'Sale refunded successfully. ' . number_format($restoredUnits) . ' stock units restored.'
     );
 }
 

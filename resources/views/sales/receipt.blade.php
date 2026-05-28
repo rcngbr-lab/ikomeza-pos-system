@@ -127,6 +127,25 @@
             font-weight:bold;
         }
 
+        .refund-banner{
+
+            border:2px solid #991b1b;
+            color:#991b1b;
+            text-align:center;
+            padding:8px;
+            margin:8px 0;
+            font-size:14px;
+            font-weight:900;
+            letter-spacing:1px;
+        }
+
+        .refund-note{
+            text-align:center;
+            font-size:10px;
+            font-weight:bold;
+            margin-top:4px;
+        }
+
         .no-print{
 
             text-align:center;
@@ -274,7 +293,28 @@ function printReceipt()
 
         </tr>
 
+        @if($sale->is_refunded || $sale->sale_status === 'REFUNDED')
+            <tr>
+                <td class="bold">
+                    Status
+                </td>
+
+                <td class="right">
+                    REFUNDED
+                </td>
+            </tr>
+        @endif
+
     </table>
+
+    @if($sale->is_refunded || $sale->sale_status === 'REFUNDED')
+        <div class="refund-banner">
+            REFUNDED RECEIPT
+        </div>
+        <div class="refund-note">
+            Stock restored on {{ optional($sale->refunded_at)->format('d/m/Y H:i') ?? 'refund date' }}
+        </div>
+    @endif
 
     <div class="line"></div>
 

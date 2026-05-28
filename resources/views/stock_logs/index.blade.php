@@ -137,7 +137,19 @@
                         </th>
 
                         <th class="p-4 text-left">
+                            Before
+                        </th>
+
+                        <th class="p-4 text-left">
+                            After
+                        </th>
+
+                        <th class="p-4 text-left">
                             User
+                        </th>
+
+                        <th class="p-4 text-left">
+                            Reason
                         </th>
 
                         <th class="p-4 text-left">
@@ -166,8 +178,6 @@
 
                             <td class="p-4">
 
-                                <td class="p-4">
-
     @if($log->type == 'SALE')
 
         <span class="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-600">
@@ -180,10 +190,16 @@
             RESTOCK
         </span>
 
+    @elseif($log->type == 'STOCK_IN')
+
+        <span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-600">
+            STOCK IN
+        </span>
+
     @elseif($log->type == 'REFUND')
 
-        <span class="px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700">
-            REFUND
+        <span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
+            REFUND RESTORE
         </span>
 
     @elseif($log->type == 'ADJUSTMENT')
@@ -208,8 +224,6 @@
 
 </td>
 
-                         
-
                             <!-- QTY -->
 
                             <td class="p-4 font-bold">
@@ -218,11 +232,29 @@
 
                             </td>
 
+                            <td class="p-4">
+
+                                {{ number_format($log->before_stock) }}
+
+                            </td>
+
+                            <td class="p-4 font-bold {{ $log->type == 'REFUND' || $log->type == 'STOCK_IN' ? 'text-green-600' : 'text-slate-900' }}">
+
+                                {{ number_format($log->after_stock) }}
+
+                            </td>
+
                             <!-- USER -->
 
                             <td class="p-4">
 
                                 {{ $log->user->name ?? 'System' }}
+
+                            </td>
+
+                            <td class="p-4 text-slate-600">
+
+                                {{ $log->reason ?? '-' }}
 
                             </td>
 
@@ -241,7 +273,7 @@
                         <tr>
 
                             <td
-                                colspan="5"
+                                colspan="8"
                                 class="p-10 text-center text-slate-500"
                             >
 

@@ -62,6 +62,16 @@
     text-transform:uppercase;
 }
 
+.stock-badge{
+    background:#dcfce7;
+    color:#166534;
+    padding:6px 10px;
+    border-radius:30px;
+    font-size:12px;
+    font-weight:800;
+    text-transform:uppercase;
+}
+
 .empty-box{
     padding:40px;
     text-align:center;
@@ -101,6 +111,8 @@
                             <th>Reason</th>
 
                             <th>Status</th>
+
+                            <th>Stock</th>
 
                             <th>Date</th>
 
@@ -148,6 +160,14 @@
 
                                         {{ $refund->status ?? 'UNKNOWN' }}
 
+                                    </span>
+
+                                </td>
+
+                                <td>
+
+                                    <span class="stock-badge">
+                                        Restored
                                     </span>
 
                                 </td>
