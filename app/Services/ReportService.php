@@ -1,0 +1,29 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Sale;
+
+class ReportService
+{
+    public function salesSummary()
+    {
+        return [
+
+            'total_sales' => Sale::sum('grand_total'),
+
+            'transactions' => Sale::count(),
+
+            'today_sales' => Sale::whereDate(
+                'created_at',
+                today()
+            )->sum('grand_total'),
+
+            'monthly_sales' => Sale::whereMonth(
+                'created_at',
+                now()->month
+            )->sum('grand_total')
+
+        ];
+    }
+}
