@@ -34,7 +34,7 @@
 
             <div class="text-gray-500 text-sm">
 
-                Today's Revenue
+                Today's Net Revenue
 
             </div>
 

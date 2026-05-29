@@ -6,6 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class Sale extends Model
 {
+    public const STATUS_COMPLETED = 'COMPLETED';
+
+    public const STATUS_REFUNDED = 'REFUNDED';
+
     protected $fillable = [
 
         'receipt_no',
@@ -196,6 +200,32 @@ public const PAYMENT_METHOD_LABELS = [
     'BANK_TRANSFER' => 'Bank Transfer',
 
 ];
+
+public function scopeRevenueBearing($query)
+{
+    return $query
+        ->where('sale_status', self::STATUS_COMPLETED)
+        ->where(function ($sale) {
+            $sale->whereNull('is_refunded')
+                ->orWhere('is_refunded', false);
+        });
+}
+
+public function scopeRefundedOnly($query)
+{
+    return $query->where(function ($sale) {
+        $sale->where('sale_status', self::STATUS_REFUNDED)
+            ->orWhere('is_refunded', true);
+    });
+}
+
+public static function refundedAmountFor($query): float
+{
+    return (float) (clone $query)
+        ->refundedOnly()
+        ->selectRaw('COALESCE(SUM(CASE WHEN refund_amount IS NOT NULL AND refund_amount > 0 THEN refund_amount ELSE grand_total END), 0) as refunded_total')
+        ->value('refunded_total');
+}
 
 public static function normalizePaymentMethod(?string $method): string
 {

@@ -190,10 +190,24 @@ class SaleController extends Controller
         |--------------------------------------------------------------------------
         */
 
+        $grossSales = (clone $query)
+            ->sum('grand_total');
+
+        $refundedSales = Sale::refundedAmountFor($query);
+
         $totalSales = (clone $query)
+            ->revenueBearing()
             ->sum('grand_total');
 
         $totalTransactions = (clone $query)
+            ->revenueBearing()
+            ->count();
+
+        $grossTransactions = (clone $query)
+            ->count();
+
+        $refundedTransactions = (clone $query)
+            ->refundedOnly()
             ->count();
 
         /*
@@ -207,7 +221,11 @@ class SaleController extends Controller
             compact(
                 'sales',
                 'totalSales',
+                'grossSales',
+                'refundedSales',
                 'totalTransactions',
+                'grossTransactions',
+                'refundedTransactions',
                 'filter',
                 'search',
                 'selectedDepartmentId',

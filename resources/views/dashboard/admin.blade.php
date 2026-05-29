@@ -4,8 +4,9 @@
 
 @php
     $kpis = [
-        ['label' => 'Today Revenue', 'value' => number_format($todayRevenue) . ' RWF', 'tone' => 'text-emerald-600'],
-        ['label' => 'Monthly Revenue', 'value' => number_format($monthRevenue) . ' RWF', 'tone' => 'text-indigo-600'],
+        ['label' => 'Today Net Revenue', 'value' => number_format($todayRevenue) . ' RWF', 'tone' => 'text-emerald-600'],
+        ['label' => 'Monthly Net Revenue', 'value' => number_format($monthRevenue) . ' RWF', 'tone' => 'text-indigo-600'],
+        ['label' => 'Refunds', 'value' => number_format($totalRefunds ?? 0) . ' RWF', 'tone' => 'text-rose-600'],
         ['label' => 'Gross Profit', 'value' => number_format($profit) . ' RWF', 'tone' => 'text-slate-950'],
         ['label' => 'Inventory Value', 'value' => number_format($inventoryValue) . ' RWF', 'tone' => 'text-amber-600'],
     ];

@@ -34,7 +34,7 @@
 
     .summary-grid{
         display:grid;
-        grid-template-columns:repeat(2,1fr);
+        grid-template-columns:repeat(4,1fr);
         gap:20px;
         margin-bottom:25px;
     }
@@ -58,6 +58,14 @@
         font-size:42px;
         font-weight:800;
         color:#111827;
+    }
+
+    .summary-card.net h1{
+        color:#16a34a;
+    }
+
+    .summary-card.refund h1{
+        color:#dc2626;
     }
 
     /*
@@ -515,10 +523,10 @@
 
 <div class="summary-grid">
 
-    <div class="summary-card">
+    <div class="summary-card net">
 
         <h3>
-            Total Sales Amount
+            Net Sales Amount
         </h3>
 
         <h1>
@@ -530,7 +538,31 @@
     <div class="summary-card">
 
         <h3>
-            Total Transactions
+            Gross Sales
+        </h3>
+
+        <h1>
+            {{ number_format($grossSales) }}
+        </h1>
+
+    </div>
+
+    <div class="summary-card refund">
+
+        <h3>
+            Refunded Amount
+        </h3>
+
+        <h1>
+            {{ number_format($refundedSales) }}
+        </h1>
+
+    </div>
+
+    <div class="summary-card">
+
+        <h3>
+            Completed Transactions
         </h3>
 
         <h1>

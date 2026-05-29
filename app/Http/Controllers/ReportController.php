@@ -168,20 +168,51 @@ class ReportController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $saleIds = (clone $query)->select('id');
+        $revenueSaleIds = (clone $query)
+            ->revenueBearing()
+            ->select('id');
 
         $departmentItemQuery = SaleItem::whereHas('sale', function ($saleQuery) use ($query) {
             $saleQuery->whereIn(
                 'id',
                 (clone $query)->select('id')
             );
-        })->when($selectedDepartmentId, fn ($items) => $items->where('department_id', $selectedDepartmentId));
+        })
+            ->whereHas('sale', fn ($sale) => $sale->revenueBearing())
+            ->when($selectedDepartmentId, fn ($items) => $items->where('department_id', $selectedDepartmentId));
+
+        $grossRevenue = $selectedDepartmentId
+            ? SaleItem::whereHas('sale', function ($saleQuery) use ($query) {
+                $saleQuery->whereIn(
+                    'id',
+                    (clone $query)->select('id')
+                );
+            })
+                ->where('department_id', $selectedDepartmentId)
+                ->sum('subtotal')
+            : (clone $query)->sum('grand_total');
+
+        $refundedRevenue = $selectedDepartmentId
+            ? SaleItem::whereHas('sale', function ($saleQuery) use ($query) {
+                $saleQuery->whereIn(
+                    'id',
+                    (clone $query)->select('id')
+                )->refundedOnly();
+            })
+                ->where('department_id', $selectedDepartmentId)
+                ->sum('subtotal')
+            : Sale::refundedAmountFor($query);
 
         $totalRevenue = $selectedDepartmentId
             ? (clone $departmentItemQuery)->sum('subtotal')
-            : (clone $query)->sum('grand_total');
+            : (clone $query)->revenueBearing()->sum('grand_total');
 
         $totalTransactions = (clone $query)
+            ->revenueBearing()
+            ->count();
+
+        $refundedTransactions = (clone $query)
+            ->refundedOnly()
             ->count();
 
         /*
@@ -193,18 +224,18 @@ class ReportController extends Controller
         $paymentSums = $selectedDepartmentId
             ? SaleItem::query()
                 ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
-                ->whereIn('sale_items.sale_id', $saleIds)
+                ->whereIn('sale_items.sale_id', $revenueSaleIds)
                 ->where('sale_items.department_id', $selectedDepartmentId)
                 ->selectRaw('sales.payment_method, SUM(sale_items.subtotal) as total')
                 ->groupBy('sales.payment_method')
                 ->pluck('total', 'payment_method')
             : collect([
-                'CASH' => (clone $query)->where('payment_method', 'CASH')->sum('grand_total'),
-                'MOMO' => (clone $query)->where('payment_method', 'MOMO')->sum('grand_total'),
-                'VISA' => (clone $query)->where('payment_method', 'VISA')->sum('grand_total'),
-                'MASTER_CARD' => (clone $query)->where('payment_method', 'MASTER_CARD')->sum('grand_total'),
-                'AIRTEL_MONEY' => (clone $query)->where('payment_method', 'AIRTEL_MONEY')->sum('grand_total'),
-                'BANK_TRANSFER' => (clone $query)->where('payment_method', 'BANK_TRANSFER')->sum('grand_total'),
+                'CASH' => (clone $query)->revenueBearing()->where('payment_method', 'CASH')->sum('grand_total'),
+                'MOMO' => (clone $query)->revenueBearing()->where('payment_method', 'MOMO')->sum('grand_total'),
+                'VISA' => (clone $query)->revenueBearing()->where('payment_method', 'VISA')->sum('grand_total'),
+                'MASTER_CARD' => (clone $query)->revenueBearing()->where('payment_method', 'MASTER_CARD')->sum('grand_total'),
+                'AIRTEL_MONEY' => (clone $query)->revenueBearing()->where('payment_method', 'AIRTEL_MONEY')->sum('grand_total'),
+                'BANK_TRANSFER' => (clone $query)->revenueBearing()->where('payment_method', 'BANK_TRANSFER')->sum('grand_total'),
             ]);
 
         $cashSales = (float) ($paymentSums['CASH'] ?? 0);
@@ -236,7 +267,7 @@ class ReportController extends Controller
                 $saleQuery->whereIn(
                     'id',
                     (clone $query)->select('id')
-                );
+                )->revenueBearing();
             })
             ->selectRaw('department_id, SUM(subtotal) as revenue, SUM(profit) as profit, SUM(quantity) as units_sold')
             ->groupBy('department_id')
@@ -259,7 +290,10 @@ class ReportController extends Controller
             compact(
                 'sales',
                 'totalRevenue',
+                'grossRevenue',
+                'refundedRevenue',
                 'totalTransactions',
+                'refundedTransactions',
                 'cashSales',
                 'momoSales',
                 'visaSales',

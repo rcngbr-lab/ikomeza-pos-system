@@ -25,8 +25,9 @@ class DashboardController extends Controller
             return view('dashboard.admin', array_merge($analytics, [
                 'totalProducts' => Product::count(),
                 'totalStock' => Product::sum('stock'),
-                'totalSales' => Sale::count(),
-                'totalRevenue' => Sale::sum('grand_total'),
+                'totalSales' => Sale::revenueBearing()->count(),
+                'totalRevenue' => Sale::revenueBearing()->sum('grand_total'),
+                'totalRefunds' => Sale::refundedAmountFor(Sale::query()),
                 'totalUsers' => User::count(),
                 'totalCategories' => Category::count(),
                 'cashierPerformance' => $this->cashierPerformance(),
@@ -105,7 +106,7 @@ class DashboardController extends Controller
     private function analyticsFor($user): array
     {
         $selectedDepartmentId = app(DepartmentAccessService::class)->selectedDepartmentId($user);
-        $salesQuery = Sale::query();
+        $salesQuery = Sale::query()->revenueBearing();
 
         if ($selectedDepartmentId) {
             $salesQuery->whereHas('items', fn ($items) => $items->where('department_id', $selectedDepartmentId));
@@ -143,6 +144,7 @@ class DashboardController extends Controller
         }
 
         $topProducts = SaleItem::with('product.department')
+            ->whereHas('sale', fn ($sale) => $sale->revenueBearing())
             ->when($selectedDepartmentId, fn ($items) => $items->where('department_id', $selectedDepartmentId))
             ->selectRaw('product_id, SUM(quantity) as units_sold, SUM(subtotal) as revenue')
             ->groupBy('product_id')
@@ -154,17 +156,25 @@ class DashboardController extends Controller
             ? SaleItem::query()
                 ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
                 ->where('sale_items.department_id', $selectedDepartmentId)
+                ->where('sales.sale_status', Sale::STATUS_COMPLETED)
+                ->where(function ($query) {
+                    $query->whereNull('sales.is_refunded')
+                        ->orWhere('sales.is_refunded', false);
+                })
                 ->selectRaw('sales.payment_method, SUM(sale_items.subtotal) as total, COUNT(DISTINCT sales.id) as count')
                 ->groupBy('sales.payment_method')
                 ->orderByDesc('total')
                 ->get()
             : Sale::query()
+                ->revenueBearing()
                 ->selectRaw('payment_method, SUM(grand_total) as total, COUNT(*) as count')
                 ->groupBy('payment_method')
                 ->orderByDesc('total')
                 ->get();
 
-        $profit = SaleItem::when($selectedDepartmentId, fn ($items) => $items->where('department_id', $selectedDepartmentId))->sum('profit');
+        $profit = SaleItem::whereHas('sale', fn ($sale) => $sale->revenueBearing())
+            ->when($selectedDepartmentId, fn ($items) => $items->where('department_id', $selectedDepartmentId))
+            ->sum('profit');
         $lowStockProducts = Product::with('department')
             ->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))
             ->whereColumn('stock', '<=', 'alert_stock')

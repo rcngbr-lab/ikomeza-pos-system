@@ -26,12 +26,12 @@
         <div class="bg-white rounded-3xl p-5 shadow-sm">
 
             <div class="text-slate-500 text-sm">
-                Sales
+                Completed Sales
             </div>
 
             <div class="mt-3 text-4xl font-black text-indigo-600">
 
-                {{ \App\Models\Sale::count() }}
+                {{ \App\Models\Sale::revenueBearing()->count() }}
 
             </div>
 
@@ -40,13 +40,13 @@
         <div class="bg-white rounded-3xl p-5 shadow-sm">
 
             <div class="text-slate-500 text-sm">
-                Revenue
+                Net Revenue
             </div>
 
             <div class="mt-3 text-3xl font-black text-green-600">
 
                 {{ number_format(
-                    \App\Models\Sale::sum('grand_total')
+                    \App\Models\Sale::revenueBearing()->sum('grand_total')
                 ) }}
 
             </div>

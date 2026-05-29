@@ -236,7 +236,7 @@ body {
 
     .print-summary {
         display: grid;
-        grid-template-columns: repeat(6, 1fr);
+        grid-template-columns: repeat(9, 1fr);
         gap: 6px;
         margin-bottom: 10px;
     }
@@ -493,18 +493,42 @@ body {
 </form>
     <!-- STATS -->
 
-    <div class="report-grid grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-5">
+    <div class="report-grid grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-5">
 
         <!-- TOTAL -->
 
         <div class="report-card bg-white rounded-2xl shadow-sm border p-3">
 
             <p class="text-slate-500 text-xs">
-                Revenue
+                Net Revenue
             </p>
 
             <h2 class="text-xl md:text-2xl font-black mt-2 text-green-600">
                 {{ number_format($totalRevenue) }}
+            </h2>
+
+        </div>
+
+        <div class="report-card bg-white rounded-2xl shadow-sm border p-3">
+
+            <p class="text-slate-500 text-xs">
+                Gross Sales
+            </p>
+
+            <h2 class="text-xl md:text-2xl font-black mt-2 text-slate-900">
+                {{ number_format($grossRevenue) }}
+            </h2>
+
+        </div>
+
+        <div class="report-card bg-white rounded-2xl shadow-sm border p-3">
+
+            <p class="text-slate-500 text-xs">
+                Refunds
+            </p>
+
+            <h2 class="text-xl md:text-2xl font-black mt-2 text-red-600">
+                {{ number_format($refundedRevenue) }}
             </h2>
 
         </div>
@@ -514,11 +538,23 @@ body {
         <div class="report-card bg-white rounded-2xl shadow-sm border p-3">
 
             <p class="text-slate-500 text-xs">
-                Transactions
+                Completed
             </p>
 
             <h2 class="text-xl md:text-2xl font-black mt-2">
                 {{ $totalTransactions }}
+            </h2>
+
+        </div>
+
+        <div class="report-card bg-white rounded-2xl shadow-sm border p-3">
+
+            <p class="text-slate-500 text-xs">
+                Refunded
+            </p>
+
+            <h2 class="text-xl md:text-2xl font-black mt-2 text-red-600">
+                {{ $refundedTransactions }}
             </h2>
 
         </div>
@@ -810,8 +846,18 @@ body {
 
     <section class="print-summary">
         <div>
-            <span>Revenue</span>
+            <span>Net Revenue</span>
             <strong>{{ number_format($totalRevenue) }} RWF</strong>
+        </div>
+
+        <div>
+            <span>Gross Sales</span>
+            <strong>{{ number_format($grossRevenue) }} RWF</strong>
+        </div>
+
+        <div>
+            <span>Refunds</span>
+            <strong>{{ number_format($refundedRevenue) }} RWF</strong>
         </div>
 
         <div>
@@ -820,8 +866,13 @@ body {
         </div>
 
         <div>
-            <span>Transactions</span>
+            <span>Completed</span>
             <strong>{{ number_format($totalTransactions) }}</strong>
+        </div>
+
+        <div>
+            <span>Refunded</span>
+            <strong>{{ number_format($refundedTransactions) }}</strong>
         </div>
 
         <div>

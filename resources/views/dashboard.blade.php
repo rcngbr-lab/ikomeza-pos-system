@@ -49,13 +49,13 @@
 
                 <div class="text-slate-500 text-sm">
 
-                    Sales
+                    Completed Sales
 
                 </div>
 
                 <div class="mt-4 text-4xl font-bold text-slate-900">
 
-                    {{ \App\Models\Sale::count() }}
+                    {{ \App\Models\Sale::revenueBearing()->count() }}
 
                 </div>
 
@@ -67,14 +67,14 @@
 
                 <div class="text-slate-500 text-sm">
 
-                    Revenue
+                    Net Revenue
 
                 </div>
 
                 <div class="mt-4 text-4xl font-bold text-green-600">
 
                     {{ number_format(
-                        \App\Models\Sale::sum('grand_total')
+                        \App\Models\Sale::revenueBearing()->sum('grand_total')
                     ) }} Frw
 
                 </div>

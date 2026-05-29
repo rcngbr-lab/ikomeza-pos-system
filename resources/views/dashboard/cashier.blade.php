@@ -136,7 +136,7 @@
 
             <div class="text-gray-500 text-sm">
 
-                Revenue
+                Net Revenue
 
             </div>
 
