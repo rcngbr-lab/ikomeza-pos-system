@@ -6,6 +6,7 @@
         ['label' => 'POS Terminal', 'route' => 'pos.index', 'mark' => 'POS'],
         ['label' => 'Sales', 'route' => 'sales.index', 'mark' => 'SA'],
         ['label' => 'Shifts', 'route' => 'shifts.current', 'mark' => 'SH'],
+        ['label' => 'Requisitions', 'route' => 'requisitions.index', 'active' => 'requisitions.*', 'mark' => 'RQ'],
     ];
 
     if ($user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER')) {

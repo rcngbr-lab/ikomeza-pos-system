@@ -38,6 +38,9 @@
             <a href="{{ route('pos.index') }}" class="rounded-xl bg-indigo-600 px-4 py-3 text-center text-sm font-black text-white shadow-lg shadow-indigo-600/20">
                 Open POS
             </a>
+            <a href="{{ route('requisitions.index') }}" class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-black text-amber-700 shadow-sm">
+                Requisitions
+            </a>
             <a href="{{ route('reports.index') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center text-sm font-black text-slate-700 shadow-sm">
                 Reports
             </a>

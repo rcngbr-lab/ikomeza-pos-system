@@ -20,6 +20,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RefundController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\StockMovementController;
+use App\Http\Controllers\StockRequisitionController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\InventoryController;
 
@@ -245,6 +246,36 @@ Route::middleware([
         '/inventory/print-history',
         [InventoryController::class, 'printHistory']
     )->name('inventory.print')
+    ->middleware('admin.manager');
+
+    /*
+    |--------------------------------------------------------------------------
+    | REQUISITIONS
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get(
+        '/requisitions',
+        [StockRequisitionController::class, 'index']
+    )->name('requisitions.index')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER,CASHIER,WAITER,SERVER');
+
+    Route::post(
+        '/requisitions',
+        [StockRequisitionController::class, 'store']
+    )->name('requisitions.store')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER,CASHIER,WAITER,SERVER');
+
+    Route::post(
+        '/requisitions/{requisition}/approve',
+        [StockRequisitionController::class, 'approve']
+    )->name('requisitions.approve')
+    ->middleware('admin.manager');
+
+    Route::post(
+        '/requisitions/{requisition}/reject',
+        [StockRequisitionController::class, 'reject']
+    )->name('requisitions.reject')
     ->middleware('admin.manager');
 
     /*

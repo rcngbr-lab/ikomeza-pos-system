@@ -134,6 +134,17 @@
             </a>
 
             <a
+                href="{{ route('requisitions.index') }}"
+                class="bg-amber-500 hover:bg-amber-600
+                       text-white text-sm font-bold
+                       px-5 py-3 rounded-xl"
+            >
+
+                Requisitions
+
+            </a>
+
+            <a
                 href="{{ route('reports.index') }}"
                 class="bg-green-600 hover:bg-green-700
                        text-white text-sm font-bold

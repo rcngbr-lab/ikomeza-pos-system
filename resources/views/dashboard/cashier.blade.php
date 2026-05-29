@@ -24,7 +24,7 @@
 
     <!-- QUICK ACTIONS -->
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
 
         <a
             href="{{ route('pos.index') }}"
@@ -84,6 +84,27 @@
             <div class="text-sm opacity-80 mt-2">
 
                 My receipts
+
+            </div>
+
+        </a>
+
+        <a
+            href="{{ route('requisitions.index') }}"
+            class="bg-amber-500 hover:bg-amber-600
+                   text-white rounded-2xl
+                   p-6 transition"
+        >
+
+            <div class="text-2xl font-black">
+
+                Request
+
+            </div>
+
+            <div class="text-sm opacity-80 mt-2">
+
+                Stock approval
 
             </div>
 
