@@ -100,7 +100,6 @@ class SaleService
                     'tax' => 0,
                     'subtotal' => $quantity * $price,
                     'total' => $quantity * $price,
-                    'total_price' => $quantity * $price,
                     'profit' => ($price - ($product->buy_price ?? 0)) * $quantity,
                     'status' => 'ACTIVE',
                 ]);

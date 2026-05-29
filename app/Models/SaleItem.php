@@ -28,8 +28,6 @@ class SaleItem extends Model
 
         'total',
 
-        'total_price',
-
         'profit',
 
         'status',
