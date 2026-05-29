@@ -40,13 +40,13 @@
 
     <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
         <section class="space-y-4">
-            <div class="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[1fr_auto]">
+            <div class="grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4 lg:grid-cols-[1fr_auto]">
                 <div class="grid gap-3 sm:grid-cols-2">
                     <input
                         id="productSearch"
                         type="search"
                         placeholder="Search by name or barcode"
-                        class="h-12 rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        class="h-11 rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 sm:h-12"
                         autofocus
                     >
 
@@ -54,13 +54,13 @@
                         id="barcodeSearch"
                         type="search"
                         placeholder="Scan barcode"
-                        class="h-12 rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        class="h-11 rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 sm:h-12"
                     >
                 </div>
 
                 <form method="POST" action="{{ route('pos.clear') }}">
                     @csrf
-                    <button class="h-12 w-full rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-50 lg:w-auto">
+                    <button class="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-50 sm:h-12 lg:w-auto">
                         Clear Cart
                     </button>
                 </form>
@@ -69,7 +69,7 @@
             <div class="flex gap-2 overflow-x-auto pb-1">
                 <button
                     type="button"
-                    class="department-chip rounded-full bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white"
+                    class="department-chip shrink-0 rounded-full bg-indigo-600 px-4 py-2 text-xs font-bold text-white sm:px-5 sm:py-2.5 sm:text-sm"
                     data-department="All"
                 >
                     All Departments
@@ -78,7 +78,7 @@
                 @foreach($departments as $department)
                     <button
                         type="button"
-                        class="department-chip rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700"
+                        class="department-chip shrink-0 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 sm:px-5 sm:py-2.5 sm:text-sm"
                         data-department="{{ $department->name }}"
                     >
                         {{ $department->name }}
@@ -89,7 +89,7 @@
             <div class="flex gap-2 overflow-x-auto pb-1">
                 <button
                     type="button"
-                    class="category-chip rounded-full bg-slate-950 px-5 py-2.5 text-sm font-bold text-white"
+                    class="category-chip shrink-0 rounded-full bg-slate-950 px-4 py-2 text-xs font-bold text-white sm:px-5 sm:py-2.5 sm:text-sm"
                     data-category="All"
                 >
                     All
@@ -98,7 +98,7 @@
                 @foreach($categories as $category)
                     <button
                         type="button"
-                        class="category-chip rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700"
+                        class="category-chip shrink-0 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 sm:px-5 sm:py-2.5 sm:text-sm"
                         data-category="{{ $category->name }}"
                     >
                         {{ $category->name }}
@@ -106,7 +106,7 @@
                 @endforeach
             </div>
 
-            <div class="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-4">
+            <div class="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(116px,1fr))] min-[420px]:[grid-template-columns:repeat(auto-fill,minmax(128px,1fr))] sm:gap-3 sm:[grid-template-columns:repeat(auto-fill,minmax(160px,1fr))] xl:[grid-template-columns:repeat(auto-fill,minmax(180px,1fr))] 2xl:[grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]">
                 @foreach($products as $product)
                     @php
                         $isLow = $product->track_stock && $product->stock <= $product->alert_stock;
@@ -116,7 +116,7 @@
                     <form
                         method="POST"
                         action="{{ route('pos.add') }}"
-                        class="product-card group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md"
+                        class="product-card group rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md sm:rounded-2xl sm:p-3.5 {{ $isOut ? 'opacity-60' : '' }}"
                         data-category="{{ $product->category->name ?? 'Uncategorized' }}"
                         data-department="{{ $product->department->name ?? 'Unassigned' }}"
                         data-name="{{ strtolower($product->name) }}"
@@ -125,40 +125,40 @@
                         @csrf
                         <input type="hidden" name="product_id" value="{{ $product->id }}">
 
-                        <button type="submit" class="flex h-full w-full flex-col text-left" {{ $isOut ? 'disabled' : '' }}>
-                            <div class="flex items-start justify-between gap-3">
+                        <button type="submit" class="flex min-h-[138px] w-full flex-col text-left sm:min-h-[170px]" {{ $isOut ? 'disabled' : '' }}>
+                            <div class="flex items-start justify-between gap-2">
                                 <div class="min-w-0">
-                                    <p class="truncate text-sm font-black text-slate-950">
+                                    <p class="line-clamp-2 max-h-8 text-[12px] font-black leading-4 text-slate-950 sm:max-h-none sm:truncate sm:text-sm">
                                         {{ $product->name }}
                                     </p>
-                                    <p class="mt-1 truncate text-xs text-slate-500">
+                                    <p class="mt-1 hidden truncate text-xs text-slate-500 sm:block">
                                         {{ $product->barcode ?: $product->product_code }}
                                     </p>
                                 </div>
 
-                                <span class="rounded-full px-2 py-1 text-[10px] font-black {{ $isOut ? 'bg-rose-100 text-rose-700' : ($isLow ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700') }}">
+                                <span class="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-black sm:px-2 sm:py-1 sm:text-[10px] {{ $isOut ? 'bg-rose-100 text-rose-700' : ($isLow ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700') }}">
                                     {{ $isOut ? 'OUT' : ($isLow ? 'LOW' : 'OK') }}
                                 </span>
                             </div>
 
-                            <span class="mt-3 inline-flex w-fit rounded-full px-2.5 py-1 text-[10px] font-black {{ ($product->department?->code ?? '') === 'KITCHEN' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700' }}">
-                                {{ $product->department->name ?? 'Unassigned' }}
+                            <span class="mt-2 inline-flex w-fit rounded-full px-2 py-0.5 text-[9px] font-black uppercase sm:px-2.5 sm:py-1 sm:text-[10px] {{ ($product->department?->code ?? '') === 'KITCHEN' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700' }}">
+                                {{ $product->department?->code ?? ($product->department->name ?? 'NA') }}
                             </span>
 
-                            <div class="mt-6">
-                                <p class="text-2xl font-black text-slate-950">
+                            <div class="mt-auto pt-3 sm:pt-5">
+                                <p class="text-lg font-black leading-none text-slate-950 sm:text-2xl">
                                     {{ number_format($product->selling_price) }}
                                 </p>
-                                <p class="text-xs font-semibold text-slate-500">
+                                <p class="mt-1 truncate text-[10px] font-semibold text-slate-500 sm:text-xs">
                                     RWF per {{ $product->unit ?? 'item' }}
                                 </p>
                             </div>
 
-                            <div class="mt-4 flex items-center justify-between">
-                                <span class="text-xs font-semibold text-slate-500">
+                            <div class="mt-3 flex items-center justify-between gap-2 sm:mt-4">
+                                <span class="truncate text-[10px] font-semibold text-slate-500 sm:text-xs">
                                     Stock: {{ number_format($product->stock) }}
                                 </span>
-                                <span class="rounded-lg bg-slate-950 px-3 py-2 text-xs font-black text-white transition group-hover:bg-indigo-600">
+                                <span class="shrink-0 rounded-lg bg-slate-950 px-2.5 py-1.5 text-[10px] font-black text-white transition group-hover:bg-indigo-600 sm:px-3 sm:py-2 sm:text-xs">
                                     Add
                                 </span>
                             </div>
