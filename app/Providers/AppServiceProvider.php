@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\DemoAccountService;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
@@ -39,5 +40,9 @@ class AppServiceProvider extends ServiceProvider
                 ? true
                 : null;
         });
+
+        if (!$this->app->runningInConsole()) {
+            app(DemoAccountService::class)->ensure();
+        }
     }
 }
