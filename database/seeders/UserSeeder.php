@@ -52,6 +52,12 @@ class UserSeeder extends Seeder
             $updates['active'] = true;
         }
 
+        $adminPassword = env('ADMIN_PASSWORD');
+
+        if (is_string($adminPassword) && trim($adminPassword) !== '') {
+            $updates['password'] = Hash::make($adminPassword);
+        }
+
         if (!empty($updates)) {
             $user->forceFill($updates)->save();
         }
