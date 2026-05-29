@@ -6,6 +6,7 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class UserSeeder extends Seeder
 {
@@ -17,53 +18,61 @@ class UserSeeder extends Seeder
             ->first();
 
         if (!$adminRole) {
-            return;
-        }
-
-        $email = env('ADMIN_EMAIL', 'admin@agnesbar.com');
-
-        $user = User::firstOrCreate(
-            ['email' => $email],
-            [
-                'name' => env('ADMIN_NAME', 'Administrator'),
-                'password' => Hash::make(env('ADMIN_PASSWORD', 'password')),
-                'role' => 'ADMIN',
-                'role_id' => $adminRole->id,
-                'status' => 'ACTIVE',
+            $adminRole = Role::create([
+                'name' => 'Administrator',
+                'guard_name' => 'web',
+                'code' => 'ADMIN',
+                'slug' => 'administrator',
+                'description' => 'Full system access',
+                'is_system' => true,
                 'active' => true,
-            ]
-        );
-
-        $updates = [];
-
-        if (!$user->role) {
-            $updates['role'] = 'ADMIN';
+            ]);
         }
 
-        if (!$user->role_id) {
-            $updates['role_id'] = $adminRole->id;
+        $adminRole->forceFill([
+            'guard_name' => $adminRole->guard_name ?: 'web',
+            'code' => $adminRole->code ?: 'ADMIN',
+            'slug' => $adminRole->slug ?: Str::slug($adminRole->name),
+            'active' => true,
+        ])->save();
+
+        $email = $this->envValue('ADMIN_EMAIL', 'admin@agnesbar.com');
+        $password = $this->envValue('ADMIN_PASSWORD', 'MyStrongPassword123');
+        $name = $this->envValue('ADMIN_NAME', 'Administrator');
+
+        $user = User::whereRaw('LOWER(email) = ?', [strtolower($email)])
+            ->first();
+
+        if (!$user) {
+            $user = new User();
         }
 
-        if (!$user->status) {
-            $updates['status'] = 'ACTIVE';
-        }
-
-        if (!$user->active) {
-            $updates['active'] = true;
-        }
-
-        $adminPassword = env('ADMIN_PASSWORD');
-
-        if (is_string($adminPassword) && trim($adminPassword) !== '') {
-            $updates['password'] = Hash::make($adminPassword);
-        }
-
-        if (!empty($updates)) {
-            $user->forceFill($updates)->save();
-        }
+        $user->forceFill([
+            'name' => $name,
+            'email' => $email,
+            'password' => Hash::make($password),
+            'email_verified_at' => now(),
+            'role' => 'ADMIN',
+            'role_id' => $adminRole->id,
+            'status' => 'ACTIVE',
+            'active' => true,
+        ])->save();
 
         if (!$user->hasRole($adminRole->name)) {
             $user->syncRoles([$adminRole->name]);
         }
+    }
+
+    private function envValue(string $key, string $default): string
+    {
+        $value = env($key);
+
+        if (!is_string($value)) {
+            return $default;
+        }
+
+        $value = trim($value);
+
+        return $value !== '' ? $value : $default;
     }
 }
