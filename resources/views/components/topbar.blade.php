@@ -18,7 +18,7 @@
 
             <div class="hidden md:block">
                 <h2 class="text-lg font-bold leading-none text-slate-900 lg:text-xl">
-                    {{ str_replace('.', ' ', request()->route()?->getName() ?? 'dashboard') }}
+                    {{ str(request()->route()?->getName() ?? 'dashboard')->replace('.', ' ')->title() }}
                 </h2>
                 <p class="mt-1 text-xs text-slate-500">
                     Business operations control center

@@ -58,10 +58,16 @@ class ShiftController extends Controller
         }
 
         $totals = $this->paymentTotals($shift);
+        $recentSales = Sale::where('shift_id', $shift->id)
+            ->where('sale_status', 'COMPLETED')
+            ->latest()
+            ->take(6)
+            ->get();
 
         return view('shifts.current', array_merge([
             'shift' => $shift,
             'expectedCash' => $shift->opening_cash + $totals['cashSales'],
+            'recentSales' => $recentSales,
         ], $totals));
     }
 
@@ -148,14 +154,43 @@ class ShiftController extends Controller
             ->where('sale_status', 'COMPLETED')
             ->get();
 
+        $paymentBreakdown = [
+            'CASH' => [
+                'label' => 'Cash',
+                'amount' => $sales->where('payment_method', 'CASH')->sum('grand_total'),
+            ],
+            'MOMO' => [
+                'label' => 'MOMO',
+                'amount' => $sales->where('payment_method', 'MOMO')->sum('grand_total'),
+            ],
+            'AIRTEL_MONEY' => [
+                'label' => 'Airtel Money',
+                'amount' => $sales->where('payment_method', 'AIRTEL_MONEY')->sum('grand_total'),
+            ],
+            'VISA' => [
+                'label' => 'VISA',
+                'amount' => $sales->where('payment_method', 'VISA')->sum('grand_total'),
+            ],
+            'MASTER_CARD' => [
+                'label' => 'Mastercard',
+                'amount' => $sales->where('payment_method', 'MASTER_CARD')->sum('grand_total'),
+            ],
+            'BANK_TRANSFER' => [
+                'label' => 'Bank Transfer',
+                'amount' => $sales->where('payment_method', 'BANK_TRANSFER')->sum('grand_total'),
+            ],
+        ];
+
         return [
             'totalSales' => $sales->sum('grand_total'),
+            'transactionCount' => $sales->count(),
             'cashSales' => $sales->where('payment_method', 'CASH')->sum('grand_total'),
             'momoSales' => $sales->where('payment_method', 'MOMO')->sum('grand_total'),
             'airtelSales' => $sales->where('payment_method', 'AIRTEL_MONEY')->sum('grand_total'),
             'visaSales' => $sales->where('payment_method', 'VISA')->sum('grand_total'),
             'mastercardSales' => $sales->where('payment_method', 'MASTER_CARD')->sum('grand_total'),
             'bankSales' => $sales->where('payment_method', 'BANK_TRANSFER')->sum('grand_total'),
+            'paymentBreakdown' => $paymentBreakdown,
         ];
     }
 }

@@ -11,7 +11,8 @@
     if ($user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER')) {
         $links = array_merge($links, [
             ['label' => 'Inventory', 'route' => 'inventory.index', 'mark' => 'IN'],
-            ['label' => 'Products', 'route' => 'products.index', 'mark' => 'PR'],
+            ['label' => 'Products', 'route' => 'products.index', 'active' => 'products.*', 'mark' => 'PR'],
+            ['label' => 'Categories', 'route' => 'categories.index', 'active' => 'categories.*', 'mark' => 'CT'],
             ['label' => 'Reports', 'route' => 'reports.index', 'mark' => 'RP'],
             ['label' => 'Refunds', 'route' => 'refunds.index', 'mark' => 'RF'],
             ['label' => 'Users', 'route' => 'users.index', 'mark' => 'US'],
@@ -44,7 +45,7 @@
 
         @foreach($links as $link)
             @php
-                $active = request()->routeIs($link['route']);
+                $active = request()->routeIs($link['active'] ?? $link['route']);
             @endphp
 
             <a

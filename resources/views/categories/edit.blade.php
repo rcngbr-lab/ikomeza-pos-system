@@ -6,10 +6,10 @@
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
             <h1 class="text-3xl font-black tracking-tight text-slate-950 lg:text-4xl">
-                Add Category
+                Edit Category
             </h1>
             <p class="mt-2 text-sm font-medium text-slate-500">
-                Create a product group for POS filtering and reporting.
+                Update category details used by products and POS filters.
             </p>
         </div>
 
@@ -22,10 +22,10 @@
     </div>
 
     @include('categories.form', [
-        'category' => new \App\Models\Category(['active' => true, 'sort_order' => 0]),
-        'action' => route('categories.store'),
-        'method' => 'POST',
-        'button' => 'Save Category',
+        'category' => $category,
+        'action' => route('categories.update', $category),
+        'method' => 'PUT',
+        'button' => 'Update Category',
     ])
 </div>
 

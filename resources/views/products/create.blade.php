@@ -20,21 +20,41 @@
 
         </div>
 
-        <a
-            href="{{ route('products.index') }}"
-            class="
-                bg-slate-200
-                hover:bg-slate-300
-                text-slate-800
-                px-5
-                py-3
-                rounded-2xl
-                font-bold
-                transition
-            "
-        >
-            Back
-        </a>
+        <div class="flex gap-3">
+            <a
+                href="{{ route('categories.index') }}"
+                class="
+                    bg-white
+                    hover:bg-slate-50
+                    text-slate-700
+                    border
+                    border-slate-200
+                    px-5
+                    py-3
+                    rounded-2xl
+                    font-bold
+                    transition
+                "
+            >
+                Categories
+            </a>
+
+            <a
+                href="{{ route('products.index') }}"
+                class="
+                    bg-slate-200
+                    hover:bg-slate-300
+                    text-slate-800
+                    px-5
+                    py-3
+                    rounded-2xl
+                    font-bold
+                    transition
+                "
+            >
+                Back
+            </a>
+        </div>
 
     </div>
 
@@ -171,17 +191,25 @@
 
                 <div>
 
-                    <label
-                        class="
-                            block
-                            text-sm
-                            font-bold
-                            text-slate-700
-                            mb-2
-                        "
-                    >
-                        Category
-                    </label>
+                    <div class="mb-2 flex items-center justify-between gap-3">
+                        <label
+                            class="
+                                block
+                                text-sm
+                                font-bold
+                                text-slate-700
+                            "
+                        >
+                            Category
+                        </label>
+
+                        <a
+                            href="{{ route('categories.create') }}"
+                            class="text-xs font-black text-blue-600 hover:text-blue-700"
+                        >
+                            Add Category
+                        </a>
+                    </div>
 
                     <select
                         name="category_id"

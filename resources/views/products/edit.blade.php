@@ -179,17 +179,25 @@
 
                 <div>
 
-                    <label
-                        class="
-                            block
-                            text-sm
-                            font-bold
-                            text-slate-700
-                            mb-2
-                        "
-                    >
-                        Category
-                    </label>
+                    <div class="mb-2 flex items-center justify-between gap-3">
+                        <label
+                            class="
+                                block
+                                text-sm
+                                font-bold
+                                text-slate-700
+                            "
+                        >
+                            Category
+                        </label>
+
+                        <a
+                            href="{{ route('categories.create') }}"
+                            class="text-xs font-black text-blue-600 hover:text-blue-700"
+                        >
+                            Add Category
+                        </a>
+                    </div>
 
                     <select
                         name="category_id"
