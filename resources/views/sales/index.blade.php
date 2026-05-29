@@ -255,6 +255,17 @@
     font-weight:600;
 }
 
+.sale-actions{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.sale-actions form{
+    margin:0;
+}
+
 
 
 
@@ -328,6 +339,155 @@
     text-align:center;
     color:#64748b;
     font-size:14px;
+}
+
+@media (max-width: 768px){
+    .page-header{
+        margin-bottom:18px;
+    }
+
+    .page-header h1{
+        font-size:32px;
+        line-height:1.05;
+    }
+
+    .page-header p{
+        font-size:14px;
+    }
+
+    .summary-grid{
+        grid-template-columns:1fr;
+        gap:12px;
+        margin-bottom:16px;
+    }
+
+    .summary-card{
+        padding:18px;
+        border-radius:18px;
+    }
+
+    .summary-card h1{
+        font-size:32px;
+    }
+
+    .sales-filter-bar{
+        padding:14px;
+        border-radius:18px;
+        margin-bottom:16px;
+    }
+
+    .sales-filter-form{
+        display:grid;
+        grid-template-columns:1fr;
+        gap:10px;
+    }
+
+    .filter-select,
+    .filter-input,
+    .filter-btn{
+        width:100%;
+        min-width:0;
+        border-radius:14px;
+    }
+
+    .table-wrapper{
+        background:transparent;
+        border-radius:0;
+        overflow:visible;
+        box-shadow:none;
+    }
+
+    .table-wrapper table,
+    .table-wrapper thead,
+    .table-wrapper tbody,
+    .table-wrapper th,
+    .table-wrapper td,
+    .table-wrapper tr{
+        display:block;
+        width:100%;
+    }
+
+    .table-wrapper thead{
+        display:none;
+    }
+
+    .table-wrapper tbody{
+        display:grid;
+        gap:12px;
+    }
+
+    .table-wrapper tr{
+        overflow:hidden;
+        border:1px solid #e2e8f0;
+        border-radius:20px;
+        background:white;
+        box-shadow:0 10px 25px rgba(15,23,42,0.08);
+    }
+
+    .table-wrapper tr:hover{
+        background:white;
+    }
+
+    .table-wrapper td{
+        display:grid;
+        grid-template-columns:minmax(92px, 34%) minmax(0, 1fr);
+        align-items:center;
+        gap:12px;
+        padding:12px 14px;
+        border-bottom:1px solid #f1f5f9;
+        font-size:14px;
+    }
+
+    .table-wrapper td::before{
+        content:attr(data-label);
+        color:#64748b;
+        font-size:11px;
+        font-weight:900;
+        letter-spacing:.04em;
+        text-transform:uppercase;
+    }
+
+    .table-wrapper td:last-child{
+        display:block;
+        border-bottom:0;
+        background:#f8fafc;
+    }
+
+    .table-wrapper td:last-child::before{
+        display:block;
+        margin-bottom:10px;
+    }
+
+    .sale-actions{
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:10px;
+    }
+
+    .sale-actions form{
+        width:100%;
+    }
+
+    .print-btn,
+    .refund-btn,
+    .refunded-badge,
+    .stock-restored-badge{
+        display:flex;
+        min-height:44px;
+        width:100%;
+        align-items:center;
+        justify-content:center;
+        border-radius:14px;
+        padding:10px 12px;
+        text-align:center;
+        font-size:13px;
+    }
+
+    .refund-meta{
+        grid-column:1 / -1;
+        margin-top:0;
+        text-align:center;
+    }
 }
 
 
@@ -502,19 +662,19 @@
 
                 <tr>
 
-                    <td>
+                    <td data-label="ID">
                         {{ $sale->id }}
                     </td>
 
-                    <td>
+                    <td data-label="Invoice">
                         {{ $sale->receipt_no ?? 'N/A' }}
                     </td>
 
-                    <td>
+                    <td data-label="Cashier">
                         {{ $sale->user?->name }}
                     </td>
 
-                    <td>
+                    <td data-label="Departments">
                         <div style="display:flex; gap:4px; flex-wrap:wrap;">
                             @foreach($sale->items->pluck('department.name')->filter()->unique() as $departmentName)
                                 <span class="status" style="background:#eef2ff; color:#3730a3;">
@@ -524,11 +684,11 @@
                         </div>
                     </td>
 
-                    <td>
+                    <td data-label="Total">
                         {{ number_format($sale->grand_total) }}
                     </td>
 
-                    <td>
+                    <td data-label="Status">
 
                         <span class="status {{ $isRefunded ? 'status-refunded' : 'status-completed' }}">
                             {{ str_replace('_', ' ', $statusLabel) }}
@@ -542,11 +702,13 @@
 
                     </td>
 
-                    <td>
+                    <td data-label="Date">
                         {{ $sale->created_at }}
                     </td>
 
-                    <td style="display:flex; gap:10px;">
+                    <td data-label="Action">
+
+<div class="sale-actions">
 
     <a
         href="{{ route('sales.print', $sale->id) }}"
@@ -598,6 +760,8 @@
         </form>
 
     @endif
+
+</div>
 
 </td>
 
