@@ -1,5 +1,15 @@
 <?php
 
+$appUrl = preg_split('/\s+/', trim((string) env('APP_URL', 'http://localhost')))[0] ?: 'http://localhost';
+
+$assetUrl = trim((string) env('ASSET_URL', ''));
+$assetUrl = $assetUrl !== ''
+    ? (preg_split('/\s+/', $assetUrl)[0] ?: null)
+    : null;
+$assetUrl = $assetUrl && filter_var($assetUrl, FILTER_VALIDATE_URL)
+    ? rtrim($assetUrl, '/')
+    : null;
+
 return [
 
     /*
@@ -52,11 +62,9 @@ return [
     |
     */
 
-    'url' => preg_split('/\s+/', trim((string) env('APP_URL', 'http://localhost')))[0],
+    'url' => $appUrl,
 
-    'asset_url' => env('ASSET_URL')
-        ? preg_split('/\s+/', trim((string) env('ASSET_URL')))[0]
-        : null,
+    'asset_url' => $assetUrl,
 
     /*
     |--------------------------------------------------------------------------

@@ -13,7 +13,9 @@ return Application::configure(
     commands: __DIR__.'/../routes/console.php',
     health: '/up',
 )
-->withMiddleware(function ($middleware) {
+->withMiddleware(function (Middleware $middleware): void {
+
+    $middleware->trustProxies(at: '*');
 
     $middleware->alias([
 

@@ -2,6 +2,16 @@
 
 use Illuminate\Support\Str;
 
+$sessionDomain = env('SESSION_DOMAIN');
+$sessionDomain = is_string($sessionDomain) && in_array(strtolower(trim($sessionDomain)), ['', 'null'], true)
+    ? null
+    : $sessionDomain;
+
+$sameSite = env('SESSION_SAME_SITE', 'lax');
+$sameSite = is_string($sameSite) && in_array(strtolower(trim($sameSite)), ['', 'null'], true)
+    ? null
+    : $sameSite;
+
 return [
 
     /*
@@ -156,7 +166,7 @@ return [
     |
     */
 
-    'domain' => env('SESSION_DOMAIN'),
+    'domain' => $sessionDomain,
 
     /*
     |--------------------------------------------------------------------------
@@ -169,7 +179,7 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    'secure' => filter_var(env('SESSION_SECURE_COOKIE', false), FILTER_VALIDATE_BOOLEAN),
 
     /*
     |--------------------------------------------------------------------------
@@ -199,7 +209,7 @@ return [
     |
     */
 
-    'same_site' => env('SESSION_SAME_SITE', 'lax'),
+    'same_site' => $sameSite,
 
     /*
     |--------------------------------------------------------------------------
