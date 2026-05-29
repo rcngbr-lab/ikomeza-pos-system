@@ -24,7 +24,8 @@ class AdminOrManager
                 'KITCHEN_CHIEF',
                 'BAR_MANAGER',
                 'BAR_CHIEF',
-                'BARTENDER'
+                'BARTENDER',
+                'STORE_KEEPER'
             )
         ) {
 

@@ -1,20 +1,79 @@
 @php
     $user = auth()->user();
 
+    $canSell = $user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER', 'CASHIER', 'WAITER', 'SERVER');
+    $canShift = $user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER', 'CASHIER', 'WAITER', 'SERVER');
+    $canViewSales = $user->hasOperationalRole(
+        'ADMIN',
+        'ADMINISTRATOR',
+        'MANAGER',
+        'KITCHEN_MANAGER',
+        'KITCHEN_CHIEF',
+        'BAR_MANAGER',
+        'BAR_CHIEF',
+        'BARTENDER',
+        'CASHIER',
+        'WAITER',
+        'SERVER'
+    );
+    $canRequest = $user->hasOperationalRole(
+        'ADMIN',
+        'ADMINISTRATOR',
+        'MANAGER',
+        'STORE_KEEPER',
+        'KITCHEN_MANAGER',
+        'KITCHEN_CHIEF',
+        'BAR_MANAGER',
+        'BAR_CHIEF',
+        'BARTENDER',
+        'CASHIER',
+        'WAITER',
+        'SERVER'
+    );
+
     $links = [
         ['label' => 'Dashboard', 'route' => 'dashboard', 'mark' => 'DB'],
-        ['label' => 'POS Terminal', 'route' => 'pos.index', 'mark' => 'POS'],
-        ['label' => 'Sales', 'route' => 'sales.index', 'mark' => 'SA'],
-        ['label' => 'Shifts', 'route' => 'shifts.current', 'mark' => 'SH'],
-        ['label' => 'Requisitions', 'route' => 'requisitions.index', 'active' => 'requisitions.*', 'mark' => 'RQ'],
     ];
 
-    if ($user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER')) {
+    if ($canSell) {
+        $links[] = ['label' => 'POS Terminal', 'route' => 'pos.index', 'mark' => 'POS'];
+    }
+
+    if ($canViewSales) {
+        $links[] = ['label' => 'Sales', 'route' => 'sales.index', 'mark' => 'SA'];
+    }
+
+    if ($canShift) {
+        $links[] = ['label' => 'Shifts', 'route' => 'shifts.current', 'mark' => 'SH'];
+    }
+
+    if ($canRequest) {
+        $links[] = ['label' => 'Requisitions', 'route' => 'requisitions.index', 'active' => 'requisitions.*', 'mark' => 'RQ'];
+    }
+
+    $canOperate = $user->hasOperationalRole(
+        'ADMIN',
+        'ADMINISTRATOR',
+        'MANAGER',
+        'STORE_KEEPER',
+        'KITCHEN_MANAGER',
+        'KITCHEN_CHIEF',
+        'BAR_MANAGER',
+        'BAR_CHIEF',
+        'BARTENDER'
+    );
+
+    if ($canOperate) {
         $links = array_merge($links, [
             ['label' => 'Inventory', 'route' => 'inventory.index', 'mark' => 'IN'],
             ['label' => 'Products', 'route' => 'products.index', 'active' => 'products.*', 'mark' => 'PR'],
             ['label' => 'Categories', 'route' => 'categories.index', 'active' => 'categories.*', 'mark' => 'CT'],
             ['label' => 'Reports', 'route' => 'reports.index', 'mark' => 'RP'],
+        ]);
+    }
+
+    if ($user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER')) {
+        $links = array_merge($links, [
             ['label' => 'Refunds', 'route' => 'refunds.index', 'mark' => 'RF'],
             ['label' => 'Users', 'route' => 'users.index', 'mark' => 'US'],
         ]);

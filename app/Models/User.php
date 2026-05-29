@@ -184,7 +184,7 @@ class User extends Authenticatable
             return true;
         }
 
-        if ($this->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER')) {
+        if ($this->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER', 'STORE_KEEPER')) {
             return true;
         }
 
@@ -218,6 +218,9 @@ class User extends Authenticatable
             str_contains($role, 'KITCHEN') && str_contains($role, 'CHIEF') => 'KITCHEN_MANAGER',
             str_contains($role, 'BAR') && str_contains($role, 'MANAGER') => 'BAR_MANAGER',
             str_contains($role, 'BAR') && str_contains($role, 'CHIEF') => 'BAR_MANAGER',
+            str_contains($role, 'STORE') && str_contains($role, 'KEEPER') => 'STORE_KEEPER',
+            str_contains($role, 'STOCK') && str_contains($role, 'KEEPER') => 'STORE_KEEPER',
+            str_contains($role, 'INVENTORY') && str_contains($role, 'MANAGER') => 'STORE_KEEPER',
             str_contains($role, 'GENERAL') && str_contains($role, 'MANAGER') => 'MANAGER',
             $role === 'MANAGER' || str_contains($role, 'MANAGER') => 'MANAGER',
             str_contains($role, 'WAITER'),

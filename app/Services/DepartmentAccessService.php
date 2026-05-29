@@ -9,7 +9,7 @@ class DepartmentAccessService
 {
     public function allowedDepartmentIds(User $user)
     {
-        if ($user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER', 'CASHIER', 'WAITER', 'SERVER')) {
+        if ($user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER', 'CASHIER', 'WAITER', 'SERVER', 'STORE_KEEPER')) {
             return null;
         }
 

@@ -104,6 +104,7 @@ class DemoAccountService
             ['code' => 'KITCHEN_CHIEF', 'name' => 'Kitchen Chief', 'description' => 'Kitchen department chief operations'],
             ['code' => 'BAR_CHIEF', 'name' => 'Bar Chief', 'description' => 'Bar department chief operations'],
             ['code' => 'BARTENDER', 'name' => 'Bartender', 'description' => 'Bar operations'],
+            ['code' => 'STORE_KEEPER', 'name' => 'Store Keeper', 'description' => 'Stock receiving, stock movement, inventory, and requisition operations'],
         ];
     }
 

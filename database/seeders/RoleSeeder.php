@@ -157,5 +157,20 @@ class RoleSeeder extends Seeder
 
             'active' => true,
         ]);
+
+        Role::updateOrCreate([
+            'code' => 'STORE_KEEPER',
+        ], [
+
+            'name' => 'Store Keeper',
+
+            'slug' => 'store-keeper',
+
+            'description' => 'Stock receiving, stock movement, inventory, and requisition operations',
+
+            'is_system' => true,
+
+            'active' => true,
+        ]);
     }
 }

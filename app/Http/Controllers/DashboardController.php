@@ -37,7 +37,7 @@ class DashboardController extends Controller
             ]));
         }
 
-        if ($user->hasOperationalRole('MANAGER', 'KITCHEN_MANAGER', 'KITCHEN_CHIEF', 'BAR_MANAGER', 'BAR_CHIEF', 'BARTENDER')) {
+        if ($user->hasOperationalRole('MANAGER', 'STORE_KEEPER', 'KITCHEN_MANAGER', 'KITCHEN_CHIEF', 'BAR_MANAGER', 'BAR_CHIEF', 'BARTENDER')) {
             return view('dashboard.manager', [
                 'todayRevenue' => $analytics['todayRevenue'],
                 'todayTransactions' => $analytics['todayTransactions'],
