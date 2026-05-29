@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Department;
 use App\Models\Product;
 use App\Models\Stock;
 use App\Models\StockMovement;
@@ -188,12 +189,16 @@ class InventoryController extends Controller
             $user,
             $request->integer('department_id') ?: null
         );
+        $reportType = $request->input('type');
+        $allowedTypes = ['stock_in', 'damage'];
 
         $stockHistory = Stock::with(
-            'product',
+            'product.department',
             'department',
             'user'
-        )->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId));
+        )
+            ->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))
+            ->when(in_array($reportType, $allowedTypes, true), fn ($query) => $query->where('type', $reportType));
 
         if ($user->hasOperationalRole('CASHIER', 'WAITER', 'SERVER')) {
 
@@ -203,13 +208,37 @@ class InventoryController extends Controller
             );
         }
 
+        $this->applyStockDateFilter($stockHistory, $request);
+
         $stockHistory = $stockHistory
             ->latest()
             ->get();
 
+        $reportTitle = match ($reportType) {
+            'stock_in' => 'Stock In Report',
+            'damage' => 'Damaged Stock Report',
+            default => 'Inventory Stock History Report',
+        };
+
+        $reportDepartment = $selectedDepartmentId
+            ? (Department::find($selectedDepartmentId)?->name ?? 'Selected Department')
+            : 'All Departments';
+
+        $reportPeriod = $this->stockPeriodLabel($request);
+        $totalQuantity = $stockHistory->sum('quantity');
+        $totalRecords = $stockHistory->count();
+
         return view(
             'inventory.print-history',
-            compact('stockHistory')
+            compact(
+                'stockHistory',
+                'reportTitle',
+                'reportDepartment',
+                'reportPeriod',
+                'totalQuantity',
+                'totalRecords',
+                'reportType'
+            )
         );
     }
 
@@ -317,5 +346,40 @@ class InventoryController extends Controller
         }
 
         return back()->with('success', 'Damaged stock recorded.');
+    }
+
+    private function applyStockDateFilter($query, Request $request): void
+    {
+        if ($request->start_date && $request->end_date) {
+            $query->whereBetween('created_at', [
+                $request->start_date . ' 00:00:00',
+                $request->end_date . ' 23:59:59',
+            ]);
+
+            return;
+        }
+
+        match ($request->filter) {
+            'today' => $query->whereDate('created_at', today()),
+            'week' => $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]),
+            'month' => $query->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year),
+            'year' => $query->whereYear('created_at', now()->year),
+            default => null,
+        };
+    }
+
+    private function stockPeriodLabel(Request $request): string
+    {
+        if ($request->start_date && $request->end_date) {
+            return $request->start_date . ' to ' . $request->end_date;
+        }
+
+        return match ($request->filter) {
+            'today' => 'Today',
+            'week' => 'This Week',
+            'month' => 'This Month',
+            'year' => 'This Year',
+            default => 'All Time',
+        };
     }
 }

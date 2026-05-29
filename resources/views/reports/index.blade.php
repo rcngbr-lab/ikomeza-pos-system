@@ -163,6 +163,145 @@ body {
     display: none;
 }
 
+.print-report {
+    display: none;
+}
+
+@media print {
+    @page {
+        size: A4 landscape;
+        margin: 10mm;
+    }
+
+    html,
+    body {
+        width: auto !important;
+        height: auto !important;
+        background: #ffffff !important;
+        zoom: 100% !important;
+    }
+
+    body * {
+        visibility: hidden !important;
+    }
+
+    .print-report,
+    .print-report * {
+        visibility: visible !important;
+    }
+
+    .screen-report,
+    .print-header {
+        display: none !important;
+    }
+
+    .print-report {
+        display: block !important;
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        color: #111827;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 10px;
+    }
+
+    .print-report-header {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 14px;
+        border-bottom: 2px solid #111827;
+        padding-bottom: 8px;
+        margin-bottom: 10px;
+    }
+
+    .print-brand {
+        font-size: 17px;
+        font-weight: 900;
+        letter-spacing: .04em;
+    }
+
+    .print-title {
+        margin-top: 5px;
+        font-size: 22px;
+        font-weight: 900;
+    }
+
+    .print-meta {
+        text-align: right;
+        line-height: 1.6;
+        font-weight: 700;
+        color: #334155;
+    }
+
+    .print-summary {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 6px;
+        margin-bottom: 10px;
+    }
+
+    .print-summary div {
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 6px;
+    }
+
+    .print-summary span {
+        display: block;
+        color: #64748b;
+        font-size: 8px;
+        font-weight: 900;
+        text-transform: uppercase;
+    }
+
+    .print-summary strong {
+        display: block;
+        margin-top: 3px;
+        font-size: 13px;
+        color: #111827;
+    }
+
+    .print-report table {
+        width: 100%;
+        border-collapse: collapse;
+        page-break-inside: auto;
+    }
+
+    .print-report th {
+        background: #111827 !important;
+        color: #ffffff !important;
+        padding: 5px;
+        text-align: left;
+        font-size: 8px;
+        text-transform: uppercase;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .print-report td {
+        border: 1px solid #dbe3ef;
+        padding: 5px;
+        vertical-align: top;
+        font-size: 9px;
+    }
+
+    .print-report tr {
+        page-break-inside: avoid;
+    }
+
+    .print-section-title {
+        margin: 10px 0 5px;
+        font-size: 12px;
+        font-weight: 900;
+    }
+
+    .print-number {
+        text-align: right;
+        font-weight: 800;
+    }
+}
+
 </style>
 
 <!-- PRINT HEADER -->
@@ -187,7 +326,7 @@ body {
 
 </div>
 
-<div class="print-container p-4 md:p-6">
+<div class="screen-report print-container p-4 md:p-6">
 
     <!-- HEADER -->
 
@@ -654,5 +793,110 @@ body {
     </div>
 
 </div>
+
+<section class="print-report">
+    <header class="print-report-header">
+        <div>
+            <div class="print-brand">IKOMEZA POS</div>
+            <div class="print-title">Sales Performance Report</div>
+        </div>
+
+        <div class="print-meta">
+            <div>Generated: {{ now()->format('Y-m-d H:i') }}</div>
+            <div>Period: {{ $reportPeriod }}</div>
+            <div>Department: {{ $reportDepartment }}</div>
+        </div>
+    </header>
+
+    <section class="print-summary">
+        <div>
+            <span>Revenue</span>
+            <strong>{{ number_format($totalRevenue) }} RWF</strong>
+        </div>
+
+        <div>
+            <span>Profit</span>
+            <strong>{{ number_format($profit) }} RWF</strong>
+        </div>
+
+        <div>
+            <span>Transactions</span>
+            <strong>{{ number_format($totalTransactions) }}</strong>
+        </div>
+
+        <div>
+            <span>Cash</span>
+            <strong>{{ number_format($cashSales) }}</strong>
+        </div>
+
+        <div>
+            <span>MOMO</span>
+            <strong>{{ number_format($momoSales) }}</strong>
+        </div>
+
+        <div>
+            <span>Bank/Card</span>
+            <strong>{{ number_format($visaSales + $masterSales + $bankSales + $airtelSales) }}</strong>
+        </div>
+    </section>
+
+    <div class="print-section-title">Department Summary</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Department</th>
+                <th class="print-number">Revenue</th>
+                <th class="print-number">Profit</th>
+                <th class="print-number">Units Sold</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($departmentBreakdown as $departmentMetric)
+                <tr>
+                    <td>{{ $departmentMetric->department->name ?? 'Unassigned' }}</td>
+                    <td class="print-number">{{ number_format($departmentMetric->revenue) }}</td>
+                    <td class="print-number">{{ number_format($departmentMetric->profit) }}</td>
+                    <td class="print-number">{{ number_format($departmentMetric->units_sold) }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="4" style="text-align:center; font-weight:800;">No department activity.</td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
+
+    <div class="print-section-title">Sales Transactions</div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 18%;">Receipt</th>
+                <th style="width: 14%;">Cashier</th>
+                <th style="width: 12%;">Payment</th>
+                <th style="width: 14%;">Department</th>
+                <th style="width: 10%;" class="print-number">Amount</th>
+                <th style="width: 10%;">Status</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($printSales as $sale)
+                <tr>
+                    <td>{{ $sale->receipt_no }}</td>
+                    <td>{{ $sale->user->name ?? 'N/A' }}</td>
+                    <td>{{ $sale->payment_method }}</td>
+                    <td>{{ $sale->items->pluck('department.name')->filter()->unique()->join(', ') ?: '-' }}</td>
+                    <td class="print-number">{{ number_format($sale->grand_total) }}</td>
+                    <td>{{ $sale->sale_status }}</td>
+                    <td>{{ $sale->created_at->format('Y-m-d H:i') }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="7" style="text-align:center; font-weight:800;">No sales found.</td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
+</section>
 
 @endsection

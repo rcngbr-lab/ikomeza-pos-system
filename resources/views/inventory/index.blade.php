@@ -177,6 +177,14 @@
             <button class="mt-4 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-black text-white">
                 Receive Stock
             </button>
+
+            <a
+                href="{{ route('inventory.print', ['type' => 'stock_in', 'department_id' => $selectedDepartmentId, 'filter' => request('filter')]) }}"
+                target="_blank"
+                class="ml-3 inline-flex rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-black text-emerald-700"
+            >
+                Stock In Report
+            </a>
         </form>
 
         <form
@@ -212,6 +220,14 @@
             <button class="mt-4 rounded-xl bg-rose-600 px-5 py-3 text-sm font-black text-white">
                 Record Damage
             </button>
+
+            <a
+                href="{{ route('inventory.print', ['type' => 'damage', 'department_id' => $selectedDepartmentId, 'filter' => request('filter')]) }}"
+                target="_blank"
+                class="ml-3 inline-flex rounded-xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-black text-rose-700"
+            >
+                Damaged Stock Report
+            </a>
         </form>
     </div>
 
@@ -475,13 +491,25 @@
 
             </div>
 
-            <a href="{{ route('inventory.print', ['department_id' => $selectedDepartmentId]) }}"
-               target="_blank"
-               class="px-5 py-3 rounded-2xl bg-indigo-600 text-white font-bold text-center">
+            <div class="flex flex-wrap gap-2">
+                <a href="{{ route('inventory.print', ['department_id' => $selectedDepartmentId, 'filter' => request('filter')]) }}"
+                   target="_blank"
+                   class="px-5 py-3 rounded-2xl bg-indigo-600 text-white font-bold text-center">
+                    Print History
+                </a>
 
-                Print History
+                <a href="{{ route('inventory.print', ['type' => 'stock_in', 'department_id' => $selectedDepartmentId, 'filter' => request('filter')]) }}"
+                   target="_blank"
+                   class="px-5 py-3 rounded-2xl bg-emerald-600 text-white font-bold text-center">
+                    Stock In
+                </a>
 
-            </a>
+                <a href="{{ route('inventory.print', ['type' => 'damage', 'department_id' => $selectedDepartmentId, 'filter' => request('filter')]) }}"
+                   target="_blank"
+                   class="px-5 py-3 rounded-2xl bg-rose-600 text-white font-bold text-center">
+                    Damaged
+                </a>
+            </div>
 
         </div>
 

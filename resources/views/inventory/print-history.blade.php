@@ -1,240 +1,278 @@
 <!DOCTYPE html>
 <html>
 <head>
-
-    <title>Inventory Stock History</title>
-
+    <title>{{ $reportTitle ?? 'Inventory Report' }}</title>
     <meta charset="UTF-8">
 
     <style>
-
-        @page{
-            size:A4 portrait;
-            margin:15mm;
+        @page {
+            size: A4 landscape;
+            margin: 10mm;
         }
 
-        body{
-            font-family: Arial, sans-serif;
-            color:#111827;
-            margin:0;
-            padding:0;
-            background:white;
+        * {
+            box-sizing: border-box;
         }
 
-        .header{
-            margin-bottom:25px;
+        body {
+            margin: 0;
+            background: #f1f5f9;
+            color: #111827;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 12px;
         }
 
-        .title{
-            font-size:28px;
-            font-weight:800;
-            margin-bottom:6px;
+        .sheet {
+            width: 277mm;
+            min-height: 190mm;
+            margin: 16px auto;
+            background: #ffffff;
+            padding: 10mm;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, .12);
         }
 
-        .subtitle{
-            font-size:13px;
-            color:#6b7280;
+        .actions {
+            width: 277mm;
+            margin: 16px auto;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
         }
 
-        table{
-            width:100%;
-            border-collapse:collapse;
+        .actions button,
+        .actions a {
+            border: 0;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-weight: 800;
+            text-decoration: none;
+            cursor: pointer;
         }
 
-        th{
-            background:#0f172a;
-            color:white;
-            padding:12px;
-            text-align:left;
-            font-size:13px;
+        .actions button {
+            background: #111827;
+            color: #ffffff;
         }
 
-        td{
-            padding:12px;
-            border:1px solid #e5e7eb;
-            font-size:13px;
+        .actions a {
+            background: #e5e7eb;
+            color: #111827;
         }
 
-        tr:nth-child(even){
-            background:#f8fafc;
+        .report-header {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 16px;
+            border-bottom: 2px solid #111827;
+            padding-bottom: 10px;
+            margin-bottom: 12px;
         }
 
-        .sale{
-            color:#dc2626;
-            font-weight:700;
+        .brand {
+            font-size: 18px;
+            font-weight: 900;
+            letter-spacing: .04em;
         }
 
-        .stockin{
-            color:#16a34a;
-            font-weight:700;
+        .title {
+            margin-top: 6px;
+            font-size: 24px;
+            font-weight: 900;
         }
 
-        .footer{
-            margin-top:25px;
-            text-align:center;
-            font-size:12px;
-            color:#6b7280;
+        .meta {
+            text-align: right;
+            line-height: 1.7;
+            color: #334155;
+            font-weight: 700;
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .summary-box {
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 9px;
+        }
+
+        .summary-label {
+            color: #64748b;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .summary-value {
+            margin-top: 5px;
+            font-size: 18px;
+            font-weight: 900;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #111827;
+            color: #ffffff;
+            padding: 7px;
+            text-align: left;
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+
+        td {
+            border: 1px solid #dbe3ef;
+            padding: 7px;
+            vertical-align: top;
+        }
+
+        tr:nth-child(even) td {
+            background: #f8fafc;
+        }
+
+        .number {
+            text-align: right;
+            font-weight: 800;
+        }
+
+        .type {
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .type-stock_in {
+            color: #047857;
+        }
+
+        .type-damage {
+            color: #be123c;
+        }
+
+        .footer {
+            margin-top: 12px;
+            display: flex;
+            justify-content: space-between;
+            color: #64748b;
+            font-size: 10px;
+            font-weight: 700;
         }
 
         @media print {
-
-            body{
-                zoom:95%;
+            body {
+                background: #ffffff;
             }
 
+            .actions {
+                display: none !important;
+            }
+
+            .sheet {
+                width: auto;
+                min-height: auto;
+                margin: 0;
+                padding: 0;
+                box-shadow: none;
+            }
+
+            th {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
         }
-
     </style>
-
 </head>
 
 <body>
-
-    <div class="header">
-
-        <div class="title">
-
-            IKOMEZA POS
-
-        </div>
-
-        <div class="subtitle">
-
-            Inventory Stock History Report
-
-        </div>
-
-        <div class="subtitle">
-
-            Generated:
-            {{ now()->format('Y-m-d H:i A') }}
-
-        </div>
-
+    <div class="actions">
+        <a href="{{ route('inventory.index') }}">Back</a>
+        <button onclick="window.print()">Print Report</button>
     </div>
 
-    <table>
+    <main class="sheet">
+        <header class="report-header">
+            <div>
+                <div class="brand">IKOMEZA POS</div>
+                <div class="title">{{ $reportTitle ?? 'Inventory Stock History Report' }}</div>
+            </div>
 
-        <thead>
+            <div class="meta">
+                <div>Generated: {{ now()->format('Y-m-d H:i') }}</div>
+                <div>Period: {{ $reportPeriod ?? 'All Time' }}</div>
+                <div>Department: {{ $reportDepartment ?? 'All Departments' }}</div>
+            </div>
+        </header>
 
-            <tr>
+        <section class="summary">
+            <div class="summary-box">
+                <div class="summary-label">Records</div>
+                <div class="summary-value">{{ number_format($totalRecords ?? $stockHistory->count()) }}</div>
+            </div>
 
-                <th>Product</th>
-                <th>Department</th>
-                <th>Type</th>
-                <th>Qty</th>
-                <th>Before</th>
-                <th>After</th>
-                <th>User</th>
-                <th>Date</th>
+            <div class="summary-box">
+                <div class="summary-label">Total Quantity</div>
+                <div class="summary-value">{{ number_format($totalQuantity ?? $stockHistory->sum('quantity')) }}</div>
+            </div>
 
-            </tr>
+            <div class="summary-box">
+                <div class="summary-label">Report Type</div>
+                <div class="summary-value">{{ str_replace('_', ' ', strtoupper($reportType ?: 'ALL')) }}</div>
+            </div>
 
-        </thead>
+            <div class="summary-box">
+                <div class="summary-label">Prepared By</div>
+                <div class="summary-value">{{ auth()->user()->name ?? 'System' }}</div>
+            </div>
+        </section>
 
-        <tbody>
-
-            @foreach($stockHistory as $history)
-
+        <table>
+            <thead>
                 <tr>
-
-                    <td>
-                        {{ $history->product->name ?? '-' }}
-                    </td>
-
-                    <td>
-                        {{ $history->department->name ?? $history->product?->department?->name ?? '-' }}
-                    </td>
-
-                    <td>
-
-                        <span class="
-                            {{ strtolower($history->type) == 'sale'
-                                ? 'sale'
-                                : 'stockin'
-                            }}
-                        ">
-
-                            {{ strtoupper($history->type) }}
-
-                        </span>
-
-                    </td>
-
-                    <td>
-                        {{ $history->quantity }}
-                    </td>
-
-                    <td>
-                        {{ $history->before_stock }}
-                    </td>
-
-                    <td>
-                        {{ $history->after_stock }}
-                    </td>
-
-                    <td>
-                        {{ $history->user->name ?? '-' }}
-                    </td>
-
-                    <td>
-                        {{ $history->created_at->format('Y-m-d H:i') }}
-                    </td>
-
+                    <th style="width: 12%;">Date</th>
+                    <th style="width: 20%;">Product</th>
+                    <th style="width: 12%;">Department</th>
+                    <th style="width: 10%;">Type</th>
+                    <th style="width: 8%;">Qty</th>
+                    <th style="width: 8%;">Before</th>
+                    <th style="width: 8%;">After</th>
+                    <th style="width: 12%;">User</th>
+                    <th>Note / Reason</th>
                 </tr>
+            </thead>
 
-            @endforeach
+            <tbody>
+                @forelse($stockHistory as $history)
+                    <tr>
+                        <td>{{ $history->created_at->format('Y-m-d H:i') }}</td>
+                        <td>{{ $history->product->name ?? '-' }}</td>
+                        <td>{{ $history->department->name ?? $history->product?->department?->name ?? '-' }}</td>
+                        <td class="type type-{{ strtolower($history->type) }}">{{ strtoupper(str_replace('_', ' ', $history->type)) }}</td>
+                        <td class="number">{{ number_format($history->quantity) }}</td>
+                        <td class="number">{{ number_format($history->before_stock) }}</td>
+                        <td class="number">{{ number_format($history->after_stock) }}</td>
+                        <td>{{ $history->user->name ?? '-' }}</td>
+                        <td>{{ $history->note ?? '-' }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 18px; font-weight: 800;">
+                            No records found for this report.
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
 
-        </tbody>
-
-    </table>
-
-    <div class="footer">
-
-        IKOMEZA POS SYSTEM
-
-    </div>
-
-   <div style="margin-top:30px;text-align:center;">
-
-    <button onclick="window.print()"
-        style="
-            padding:12px 25px;
-            border:none;
-            background:#111827;
-            color:white;
-            border-radius:10px;
-            cursor:pointer;
-            font-weight:bold;
-        ">
-
-        Print Report
-
-    </button>
-
-    <a href="/inventory"
-       style="
-            padding:12px 25px;
-            background:#e5e7eb;
-            color:#111827;
-            text-decoration:none;
-            border-radius:10px;
-            margin-left:10px;
-            font-weight:bold;
-       ">
-
-        Back
-
-    </a>
-
-</div>
-
-
-
-
-
-
-
-
+        <footer class="footer">
+            <span>IKOMEZA POS SYSTEM</span>
+            <span>Authorized inventory report</span>
+        </footer>
+    </main>
 </body>
 </html>

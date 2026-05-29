@@ -30,7 +30,7 @@ class ReportController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $query = Sale::with('user')
+        $query = Sale::with('user', 'items.department')
             ->latest();
 
         if ($selectedDepartmentId) {
@@ -157,6 +157,11 @@ class ReportController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        $printSales = (clone $query)
+            ->with('user', 'items.department')
+            ->limit(500)
+            ->get();
+
         /*
         |--------------------------------------------------------------------------
         | TOTALS
@@ -238,6 +243,11 @@ class ReportController extends Controller
             ->orderByDesc('revenue')
             ->get();
 
+        $reportPeriod = $this->periodLabel($filter, $request);
+        $reportDepartment = $departments
+            ->firstWhere('id', (int) $selectedDepartmentId)
+            ?->name ?? 'All Departments';
+
         /*
         |--------------------------------------------------------------------------
         | VIEW
@@ -261,7 +271,10 @@ class ReportController extends Controller
                 'topProducts',
                 'departments',
                 'selectedDepartmentId',
-                'departmentBreakdown'
+                'departmentBreakdown',
+                'printSales',
+                'reportPeriod',
+                'reportDepartment'
             )
         );
     }
@@ -289,5 +302,20 @@ class ReportController extends Controller
         return redirect()->route('sales.index', [
             'filter' => $request->filter ?? 'daily',
         ]);
+    }
+
+    private function periodLabel(string $filter, Request $request): string
+    {
+        if ($request->start_date && $request->end_date) {
+            return $request->start_date . ' to ' . $request->end_date;
+        }
+
+        return match ($filter) {
+            'weekly', 'week' => 'This Week',
+            'monthly', 'month' => 'This Month',
+            'yearly', 'year' => 'This Year',
+            'range' => 'Custom Range',
+            default => 'Today',
+        };
     }
 }
