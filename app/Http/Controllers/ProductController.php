@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\StockMovement;
 use App\Models\Stock;
+use App\Services\CategoryCatalogService;
 
 class ProductController extends Controller
 {
@@ -42,6 +43,8 @@ class ProductController extends Controller
 
     public function create()
     {
+        app(CategoryCatalogService::class)->ensureDefaults();
+
         $categories = Category::orderBy('name')
 
             ->get();
@@ -193,6 +196,8 @@ class ProductController extends Controller
 
     public function edit(Product $product)
     {
+        app(CategoryCatalogService::class)->ensureDefaults();
+
         $categories = Category::orderBy('name')
 
             ->get();

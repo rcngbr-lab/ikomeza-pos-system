@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Category;
+use App\Services\CategoryCatalogService;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
 
@@ -11,6 +12,8 @@ class CategoryController extends Controller
 {
     public function index()
     {
+        app(CategoryCatalogService::class)->ensureDefaults();
+
         $query = Category::withCount('products')
             ->orderBy('sort_order')
             ->orderBy('name');
