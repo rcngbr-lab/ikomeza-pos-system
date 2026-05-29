@@ -378,6 +378,52 @@
 
                 </div>
 
+                <!-- PRODUCT TYPE -->
+
+                <div>
+
+                    <label
+                        class="
+                            block
+                            text-sm
+                            font-bold
+                            text-slate-700
+                            mb-2
+                        "
+                    >
+                        Product Type
+                    </label>
+
+                    <select
+                        name="product_type"
+                        class="
+                            w-full
+                            rounded-2xl
+                            border
+                            border-slate-300
+                            px-4
+                            py-4
+                            focus:outline-none
+                            focus:ring-2
+                            focus:ring-blue-500
+                        "
+                        required
+                    >
+                        <option value="FINISHED_PRODUCT" @selected(old('product_type', $product->product_type ?: 'FINISHED_PRODUCT') === 'FINISHED_PRODUCT')>
+                            Finished Product
+                        </option>
+
+                        <option value="RAW_MATERIAL" @selected(old('product_type', $product->product_type) === 'RAW_MATERIAL')>
+                            Raw Material
+                        </option>
+
+                        <option value="SERVICE" @selected(old('product_type', $product->product_type) === 'SERVICE')>
+                            Service
+                        </option>
+                    </select>
+
+                </div>
+
             </div>
 
             <!-- ACTIONS -->

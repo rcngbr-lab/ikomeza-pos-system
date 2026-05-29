@@ -427,19 +427,15 @@
         "
     >
 
-        <option value="BEER">
-            Beer
+        <option value="FINISHED_PRODUCT" @selected(old('product_type', 'FINISHED_PRODUCT') === 'FINISHED_PRODUCT')>
+            Finished Product
         </option>
 
-        <option value="LIQUEUR">
-            Liqueur
+        <option value="RAW_MATERIAL" @selected(old('product_type') === 'RAW_MATERIAL')>
+            Raw Material
         </option>
 
-        <option value="FOOD">
-            Food
-        </option>
-
-        <option value="SERVICE">
+        <option value="SERVICE" @selected(old('product_type') === 'SERVICE')>
             Service
         </option>
 

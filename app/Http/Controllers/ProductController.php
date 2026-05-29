@@ -100,13 +100,17 @@ class ProductController extends Controller
 
                 'nullable|string|max:50',
 
+            'product_type' =>
+
+                'nullable|in:FINISHED_PRODUCT,RAW_MATERIAL,SERVICE',
+
         ]);
 
         Product::create([
 
             'product_code' =>
 
-                'PRD-' . time(),
+                $this->generateProductCode(),
 
             'barcode' =>
 
@@ -126,7 +130,7 @@ class ProductController extends Controller
 
             'product_type' =>
 
-                $request->product_type,
+                $request->input('product_type', 'FINISHED_PRODUCT'),
 
             'buy_price' =>
 
@@ -261,6 +265,10 @@ class ProductController extends Controller
 
                 'nullable|string|max:50',
 
+            'product_type' =>
+
+                'nullable|in:FINISHED_PRODUCT,RAW_MATERIAL,SERVICE',
+
         ]);
 
         $product->update([
@@ -283,7 +291,7 @@ class ProductController extends Controller
 
             'product_type' =>
 
-                $request->product_type,
+                $request->input('product_type', $product->product_type ?: 'FINISHED_PRODUCT'),
 
             'buy_price' =>
 
@@ -521,5 +529,14 @@ class ProductController extends Controller
                 'Product deleted successfully.'
 
             );
+    }
+
+    private function generateProductCode(): string
+    {
+        do {
+            $code = 'PRD-' . now()->format('YmdHis') . '-' . random_int(1000, 9999);
+        } while (Product::where('product_code', $code)->exists());
+
+        return $code;
     }
 }
