@@ -93,6 +93,33 @@
         </select>
     </div>
 
+    {{-- DEPARTMENT --}}
+    <div>
+        <label class="block mb-2 text-sm font-medium text-gray-700">
+            Department
+        </label>
+
+        <select
+            name="department_id"
+            class="w-full h-12 px-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+        >
+            <option value="">
+                No department restriction
+            </option>
+
+            @foreach($departments as $department)
+
+                <option
+                    value="{{ $department->id }}"
+                    @selected(old('department_id', $user->department_id ?? '') == $department->id)
+                >
+                    {{ $department->name }}
+                </option>
+
+            @endforeach
+        </select>
+    </div>
+
     {{-- ROLE --}}
     <div>
         <label class="block mb-2 text-sm font-medium text-gray-700">

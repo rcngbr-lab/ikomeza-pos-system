@@ -61,6 +61,31 @@
 
     </div>
 
+    <form method="GET" action="{{ route('inventory.index') }}" class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div class="grid gap-3 md:grid-cols-[220px_220px_auto]">
+            <select name="department_id" class="rounded-xl border-slate-200 bg-slate-50 text-sm font-semibold">
+                <option value="">All Departments</option>
+                @foreach($departments as $department)
+                    <option value="{{ $department->id }}" @selected((int) $selectedDepartmentId === (int) $department->id)>
+                        {{ $department->name }}
+                    </option>
+                @endforeach
+            </select>
+
+            <select name="filter" class="rounded-xl border-slate-200 bg-slate-50 text-sm font-semibold">
+                <option value="">All Time</option>
+                <option value="today" @selected(request('filter') === 'today')>Today</option>
+                <option value="week" @selected(request('filter') === 'week')>This Week</option>
+                <option value="month" @selected(request('filter') === 'month')>This Month</option>
+                <option value="year" @selected(request('filter') === 'year')>This Year</option>
+            </select>
+
+            <button class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-black text-white">
+                Filter Inventory
+            </button>
+        </div>
+    </form>
+
     <!-- STATS -->
 
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
@@ -138,7 +163,9 @@
                 <select name="product_id" required class="rounded-xl border-slate-200 bg-slate-50">
                     <option value="">Select product</option>
                     @foreach($allProducts as $product)
-                        <option value="{{ $product->id }}">{{ $product->name }}</option>
+                        <option value="{{ $product->id }}">
+                            {{ $product->name }} - {{ $product->department->name ?? 'Unassigned' }}
+                        </option>
                     @endforeach
                 </select>
 
@@ -171,7 +198,9 @@
                 <select name="product_id" required class="rounded-xl border-slate-200 bg-slate-50">
                     <option value="">Select product</option>
                     @foreach($allProducts as $product)
-                        <option value="{{ $product->id }}">{{ $product->name }}</option>
+                        <option value="{{ $product->id }}">
+                            {{ $product->name }} - {{ $product->department->name ?? 'Unassigned' }}
+                        </option>
                     @endforeach
                 </select>
 
@@ -219,6 +248,10 @@
                         </th>
 
                         <th class="px-4 py-4 text-left font-bold">
+                            Department
+                        </th>
+
+                        <th class="px-4 py-4 text-left font-bold">
                             Buy Price
                         </th>
 
@@ -254,6 +287,12 @@
 
                         <td class="px-4 py-4 text-slate-600">
                             {{ $product->category->name ?? '-' }}
+                        </td>
+
+                        <td class="px-4 py-4">
+                            <span class="rounded-full px-3 py-1 text-xs font-black {{ ($product->department?->code ?? '') === 'KITCHEN' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700' }}">
+                                {{ $product->department->name ?? 'Unassigned' }}
+                            </span>
                         </td>
 
                         <td class="px-4 py-4">
@@ -302,7 +341,7 @@
 
                     <tr>
 
-                        <td colspan="7"
+                        <td colspan="8"
                             class="text-center py-10 text-slate-400">
 
                             No products found
@@ -360,6 +399,10 @@
                         </th>
 
                         <th class="px-4 py-4 text-left">
+                            Department
+                        </th>
+
+                        <th class="px-4 py-4 text-left">
                             Alert Level
                         </th>
 
@@ -382,6 +425,10 @@
                         </td>
 
                         <td class="px-4 py-4">
+                            {{ $product->department->name ?? 'Unassigned' }}
+                        </td>
+
+                        <td class="px-4 py-4">
                             {{ $product->alert_stock }}
                         </td>
 
@@ -391,7 +438,7 @@
 
                     <tr>
 
-                        <td colspan="3"
+                        <td colspan="4"
                             class="text-center py-8 text-slate-400">
 
                             No low stock products
@@ -428,7 +475,7 @@
 
             </div>
 
-            <a href="{{ route('inventory.print') }}"
+            <a href="{{ route('inventory.print', ['department_id' => $selectedDepartmentId]) }}"
                target="_blank"
                class="px-5 py-3 rounded-2xl bg-indigo-600 text-white font-bold text-center">
 
@@ -452,6 +499,10 @@
 
                         <th class="px-4 py-4 text-left">
                             Type
+                        </th>
+
+                        <th class="px-4 py-4 text-left">
+                            Department
                         </th>
 
                         <th class="px-4 py-4 text-left">
@@ -498,6 +549,10 @@
 
                         </td>
 
+                        <td class="px-4 py-4">
+                            {{ $history->department->name ?? $history->product?->department?->name ?? 'Unassigned' }}
+                        </td>
+
                         <td class="px-4 py-4 font-bold">
                             {{ $history->quantity }}
                         </td>
@@ -524,7 +579,7 @@
 
                     <tr>
 
-                        <td colspan="7"
+                        <td colspan="8"
                             class="text-center py-10 text-slate-400">
 
                             No stock history found

@@ -18,6 +18,8 @@ class Product extends Model
 
         'category_id',
 
+        'department_id',
+
         'product_type',
 
         'buy_price',
@@ -62,6 +64,13 @@ class Product extends Model
     {
         return $this->belongsTo(
             Category::class
+        );
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(
+            Department::class
         );
     }
 

@@ -93,6 +93,13 @@
             margin-bottom: 8px;
         }
 
+        .dept {
+            display: block;
+            font-size: 10px;
+            font-weight: bold;
+            opacity: .7;
+        }
+
         @media print {
 
             .btn {
@@ -211,6 +218,9 @@
                     <td>
 
                         {{ $item->product->name ?? 'Deleted Product' }}
+                        <span class="dept">
+                            {{ $item->department->name ?? $item->product?->department?->name ?? 'Department' }}
+                        </span>
 
                     </td>
 

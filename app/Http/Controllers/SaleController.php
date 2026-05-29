@@ -10,6 +10,7 @@ use App\Models\SaleItem;
 use App\Models\Refund;
 use App\Models\Stock;
 use App\Models\StockMovement;
+use App\Services\DepartmentAccessService;
 use Illuminate\Support\Facades\DB;
 
 use App\Services\SaleService;
@@ -53,7 +54,20 @@ class SaleController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $query = Sale::with('user');
+        $departmentAccess = app(DepartmentAccessService::class);
+
+        $selectedDepartmentId = $departmentAccess->selectedDepartmentId(
+            $request->user(),
+            $request->integer('department_id') ?: null
+        );
+
+        $departments = $departmentAccess->visibleDepartments($request->user());
+
+        $query = Sale::with('user', 'items.department');
+
+        if ($selectedDepartmentId) {
+            $query->whereHas('items', fn ($items) => $items->where('department_id', $selectedDepartmentId));
+        }
 
         /*
         |--------------------------------------------------------------------------
@@ -70,7 +84,7 @@ class SaleController extends Controller
         */
 
         if (
-            $user->hasOperationalRole('CASHIER')
+            $user->hasOperationalRole('CASHIER', 'WAITER', 'SERVER')
             
         ) {
 
@@ -194,7 +208,9 @@ class SaleController extends Controller
                 'totalSales',
                 'totalTransactions',
                 'filter',
-                'search'
+                'search',
+                'selectedDepartmentId',
+                'departments'
             )
         );
     }
@@ -208,7 +224,8 @@ class SaleController extends Controller
     public function print($id)
     {
         $sale = Sale::with([
-            'items.product',
+            'items.product.department',
+            'items.department',
             'user'
         ])->findOrFail($id);
 
@@ -221,7 +238,7 @@ class SaleController extends Controller
         $user = auth()->user();
 
         if (
-            $user->hasOperationalRole('CASHIER')
+            $user->hasOperationalRole('CASHIER', 'WAITER', 'SERVER')
             &&
             $sale->user_id != $user->id
         ) {
@@ -242,7 +259,7 @@ public function refund(Request $request, $id)
         'refund_reason' => ['nullable', 'string', 'max:500'],
     ]);
 
-    $sale = Sale::with('items')->findOrFail($id);
+    $sale = Sale::with('items.department')->findOrFail($id);
 
     if ($sale->is_refunded) {
 
@@ -291,6 +308,7 @@ public function refund(Request $request, $id)
 
             Stock::create([
                 'product_id' => $product->id,
+                'department_id' => $product->department_id ?: $item->department_id,
                 'type' => 'refund',
                 'quantity' => $item->quantity,
                 'before_stock' => $before,
@@ -301,6 +319,7 @@ public function refund(Request $request, $id)
 
             StockMovement::create([
                 'product_id' => $product->id,
+                'department_id' => $product->department_id ?: $item->department_id,
                 'branch_id' => auth()->user()->branch_id,
                 'user_id' => auth()->id(),
                 'type' => 'REFUND',
@@ -351,13 +370,14 @@ public function receipt($id)
 {
     $sale = Sale::with([
 
-        'items.product',
+        'items.product.department',
+        'items.department',
         'user'
 
     ])->findOrFail($id);
 
     if (
-        auth()->user()->hasOperationalRole('CASHIER')
+        auth()->user()->hasOperationalRole('CASHIER', 'WAITER', 'SERVER')
         && $sale->user_id !== auth()->id()
     ) {
         abort(403);

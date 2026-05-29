@@ -120,6 +120,7 @@
             <tr>
 
                 <th>Product</th>
+                <th>Department</th>
                 <th>Type</th>
                 <th>Qty</th>
                 <th>Before</th>
@@ -139,6 +140,10 @@
 
                     <td>
                         {{ $history->product->name ?? '-' }}
+                    </td>
+
+                    <td>
+                        {{ $history->department->name ?? $history->product?->department?->name ?? '-' }}
                     </td>
 
                     <td>

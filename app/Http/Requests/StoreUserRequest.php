@@ -53,6 +53,13 @@ class StoreUserRequest extends FormRequest
 
             ],
 
+            'department_id' => [
+
+                'nullable',
+                'exists:departments,id'
+
+            ],
+
             'role' => [
 
                 'required',

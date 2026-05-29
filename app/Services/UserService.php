@@ -33,6 +33,8 @@ class UserService
 
             'branch_id' => $data['branch_id'],
 
+            'department_id' => $data['department_id'] ?? null,
+
             'status' => $data['status'],
 
             'role' => $role->code ?? strtoupper($data['role']),
@@ -70,6 +72,8 @@ class UserService
             'phone' => $data['phone'] ?? null,
 
             'branch_id' => $data['branch_id'],
+
+            'department_id' => $data['department_id'] ?? null,
 
             'status' => $data['status'],
 

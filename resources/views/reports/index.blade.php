@@ -230,7 +230,7 @@ body {
 <form
     method="GET"
     action="{{ route('reports.index') }}"
-    class="grid grid-cols-1 md:grid-cols-5 gap-3 mb-5 no-print"
+    class="grid grid-cols-1 md:grid-cols-6 gap-3 mb-5 no-print"
 >
 
     <!-- SEARCH -->
@@ -282,6 +282,27 @@ body {
             Custom Range
         </option>
 
+    </select>
+
+    <select
+        name="department_id"
+        class="
+            border
+            rounded-xl
+            px-4
+            py-3
+            bg-white
+        "
+    >
+        <option value="">
+            All Departments
+        </option>
+
+        @foreach($departments as $department)
+            <option value="{{ $department->id }}" @selected((int) $selectedDepartmentId === (int) $department->id)>
+                {{ $department->name }}
+            </option>
+        @endforeach
     </select>
 
     <!-- FROM DATE -->
@@ -449,6 +470,40 @@ body {
 
     </div>
 
+    <div class="grid gap-3 md:grid-cols-2 mb-5">
+        @forelse($departmentBreakdown as $departmentMetric)
+            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="text-sm font-bold text-slate-500">
+                            {{ $departmentMetric->department->name ?? 'Unassigned' }} Department
+                        </p>
+                        <h2 class="mt-2 text-2xl font-black text-slate-950">
+                            {{ number_format($departmentMetric->revenue) }} Frw
+                        </h2>
+                    </div>
+                    <span class="rounded-full px-3 py-1 text-xs font-black {{ ($departmentMetric->department?->code ?? '') === 'KITCHEN' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700' }}">
+                        {{ $departmentMetric->department->code ?? 'N/A' }}
+                    </span>
+                </div>
+                <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div class="rounded-xl bg-slate-50 p-3">
+                        <p class="text-slate-500">Profit</p>
+                        <p class="font-black text-emerald-600">{{ number_format($departmentMetric->profit) }}</p>
+                    </div>
+                    <div class="rounded-xl bg-slate-50 p-3">
+                        <p class="text-slate-500">Units Sold</p>
+                        <p class="font-black text-slate-950">{{ number_format($departmentMetric->units_sold) }}</p>
+                    </div>
+                </div>
+            </div>
+        @empty
+            <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm font-bold text-slate-500 md:col-span-2">
+                No department sales in this period.
+            </div>
+        @endforelse
+    </div>
+
     
 
     <!-- SALES TABLE -->
@@ -484,6 +539,10 @@ body {
                         </th>
 
                         <th class="p-3 text-left">
+                            Departments
+                        </th>
+
+                        <th class="p-3 text-left">
                             Amount
                         </th>
 
@@ -515,6 +574,16 @@ body {
 
                             <td class="p-3">
                                 {{ $sale->payment_method }}
+                            </td>
+
+                            <td class="p-3">
+                                <div class="flex flex-wrap gap-1">
+                                    @foreach($sale->items->pluck('department.name')->filter()->unique() as $departmentName)
+                                        <span class="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-700">
+                                            {{ $departmentName }}
+                                        </span>
+                                    @endforeach
+                                </div>
                             </td>
 
                             <td class="p-3 font-bold text-green-600">
@@ -558,7 +627,7 @@ body {
 
                         <tr>
 
-                            <td colspan="5" class="p-6 text-center text-slate-500">
+                            <td colspan="7" class="p-6 text-center text-slate-500">
 
                                 No sales found.
 

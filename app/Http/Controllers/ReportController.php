@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Services\CategoryCatalogService;
+use App\Services\DepartmentAccessService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -11,6 +13,17 @@ class ReportController extends Controller
 {
     public function index(Request $request)
     {
+        app(CategoryCatalogService::class)->ensureDefaults();
+
+        $departmentAccess = app(DepartmentAccessService::class);
+
+        $selectedDepartmentId = $departmentAccess->selectedDepartmentId(
+            $request->user(),
+            $request->integer('department_id') ?: null
+        );
+
+        $departments = $departmentAccess->visibleDepartments($request->user());
+
         /*
         |--------------------------------------------------------------------------
         | BASE QUERY
@@ -19,6 +32,10 @@ class ReportController extends Controller
 
         $query = Sale::with('user')
             ->latest();
+
+        if ($selectedDepartmentId) {
+            $query->whereHas('items', fn ($items) => $items->where('department_id', $selectedDepartmentId));
+        }
 
         /*
         |--------------------------------------------------------------------------
@@ -122,9 +139,7 @@ class ReportController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        if (
-            auth()->user()->hasOperationalRole('CASHIER')
-        ) {
+        if (auth()->user()->hasOperationalRole('CASHIER', 'WAITER', 'SERVER')) {
 
             $query->where(
                 'user_id',
@@ -148,8 +163,18 @@ class ReportController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $totalRevenue = (clone $query)
-            ->sum('grand_total');
+        $saleIds = (clone $query)->select('id');
+
+        $departmentItemQuery = SaleItem::whereHas('sale', function ($saleQuery) use ($query) {
+            $saleQuery->whereIn(
+                'id',
+                (clone $query)->select('id')
+            );
+        })->when($selectedDepartmentId, fn ($items) => $items->where('department_id', $selectedDepartmentId));
+
+        $totalRevenue = $selectedDepartmentId
+            ? (clone $departmentItemQuery)->sum('subtotal')
+            : (clone $query)->sum('grand_total');
 
         $totalTransactions = (clone $query)
             ->count();
@@ -160,29 +185,29 @@ class ReportController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $cashSales = (clone $query)
-            ->where('payment_method', 'CASH')
-            ->sum('grand_total');
+        $paymentSums = $selectedDepartmentId
+            ? SaleItem::query()
+                ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+                ->whereIn('sale_items.sale_id', $saleIds)
+                ->where('sale_items.department_id', $selectedDepartmentId)
+                ->selectRaw('sales.payment_method, SUM(sale_items.subtotal) as total')
+                ->groupBy('sales.payment_method')
+                ->pluck('total', 'payment_method')
+            : collect([
+                'CASH' => (clone $query)->where('payment_method', 'CASH')->sum('grand_total'),
+                'MOMO' => (clone $query)->where('payment_method', 'MOMO')->sum('grand_total'),
+                'VISA' => (clone $query)->where('payment_method', 'VISA')->sum('grand_total'),
+                'MASTER_CARD' => (clone $query)->where('payment_method', 'MASTER_CARD')->sum('grand_total'),
+                'AIRTEL_MONEY' => (clone $query)->where('payment_method', 'AIRTEL_MONEY')->sum('grand_total'),
+                'BANK_TRANSFER' => (clone $query)->where('payment_method', 'BANK_TRANSFER')->sum('grand_total'),
+            ]);
 
-        $momoSales = (clone $query)
-            ->where('payment_method', 'MOMO')
-            ->sum('grand_total');
-
-        $visaSales = (clone $query)
-            ->where('payment_method', 'VISA')
-            ->sum('grand_total');
-
-        $masterSales = (clone $query)
-            ->where('payment_method', 'MASTER_CARD')
-            ->sum('grand_total');
-
-        $airtelSales = (clone $query)
-            ->where('payment_method', 'AIRTEL_MONEY')
-            ->sum('grand_total');
-
-        $bankSales = (clone $query)
-            ->where('payment_method', 'BANK_TRANSFER')
-            ->sum('grand_total');
+        $cashSales = (float) ($paymentSums['CASH'] ?? 0);
+        $momoSales = (float) ($paymentSums['MOMO'] ?? 0);
+        $visaSales = (float) ($paymentSums['VISA'] ?? 0);
+        $masterSales = (float) ($paymentSums['MASTER_CARD'] ?? 0);
+        $airtelSales = (float) ($paymentSums['AIRTEL_MONEY'] ?? 0);
+        $bankSales = (float) ($paymentSums['BANK_TRANSFER'] ?? 0);
 
         /*
         |--------------------------------------------------------------------------
@@ -190,24 +215,27 @@ class ReportController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $profit = SaleItem::whereHas('sale', function ($saleQuery) use ($query) {
-            $saleQuery->whereIn(
-                'id',
-                (clone $query)->select('id')
-            );
-        })->sum('profit');
+        $profit = (clone $departmentItemQuery)->sum('profit');
 
-        $topProducts = SaleItem::with('product')
+        $topProducts = (clone $departmentItemQuery)
+            ->with('product.department')
+            ->selectRaw('product_id, SUM(quantity) as units_sold, SUM(subtotal) as revenue')
+            ->groupBy('product_id')
+            ->orderByDesc('units_sold')
+            ->take(5)
+            ->get();
+
+        $departmentBreakdown = SaleItem::query()
+            ->with('department')
             ->whereHas('sale', function ($saleQuery) use ($query) {
                 $saleQuery->whereIn(
                     'id',
                     (clone $query)->select('id')
                 );
             })
-            ->selectRaw('product_id, SUM(quantity) as units_sold, SUM(subtotal) as revenue')
-            ->groupBy('product_id')
-            ->orderByDesc('units_sold')
-            ->take(5)
+            ->selectRaw('department_id, SUM(subtotal) as revenue, SUM(profit) as profit, SUM(quantity) as units_sold')
+            ->groupBy('department_id')
+            ->orderByDesc('revenue')
             ->get();
 
         /*
@@ -230,7 +258,10 @@ class ReportController extends Controller
                 'bankSales',
                 'filter',
                 'profit',
-                'topProducts'
+                'topProducts',
+                'departments',
+                'selectedDepartmentId',
+                'departmentBreakdown'
             )
         );
     }

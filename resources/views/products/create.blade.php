@@ -187,6 +187,57 @@
 
                 </div>
 
+                <!-- DEPARTMENT -->
+
+                <div>
+
+                    <label
+                        class="
+                            block
+                            text-sm
+                            font-bold
+                            text-slate-700
+                            mb-2
+                        "
+                    >
+                        Department
+                    </label>
+
+                    <select
+                        name="department_id"
+                        required
+                        class="
+                            w-full
+                            border
+                            border-slate-300
+                            rounded-2xl
+                            px-5
+                            py-4
+                            focus:outline-none
+                            focus:ring-2
+                            focus:ring-blue-500
+                        "
+                    >
+
+                        <option value="">
+                            Select Department
+                        </option>
+
+                        @foreach($departments as $department)
+
+                            <option
+                                value="{{ $department->id }}"
+                                @selected(old('department_id') == $department->id)
+                            >
+                                {{ $department->name }}
+                            </option>
+
+                        @endforeach
+
+                    </select>
+
+                </div>
+
                 <!-- CATEGORY -->
 
                 <div>
@@ -238,6 +289,9 @@
                                 @selected(old('category_id') == $category->id)
                             >
                                 {{ $category->name }}
+                                @if($category->department)
+                                    - {{ $category->department->name }}
+                                @endif
                             </option>
 
                         @endforeach

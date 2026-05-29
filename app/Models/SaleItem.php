@@ -12,6 +12,8 @@ class SaleItem extends Model
 
         'product_id',
 
+        'department_id',
+
         'quantity',
 
         'price',
@@ -50,6 +52,13 @@ class SaleItem extends Model
     {
         return $this->belongsTo(
             Product::class
+        );
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(
+            Department::class
         );
     }
 }

@@ -145,37 +145,37 @@ Route::middleware([
         '/pos',
         [PosController::class, 'index']
     )->name('pos.index')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
 
     Route::post(
         '/pos/add-to-cart',
         [PosController::class, 'addToCart']
     )->name('pos.add')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
 
     Route::post(
         '/pos/remove-cart-item',
         [PosController::class, 'removeCartItem']
     )->name('pos.remove')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
 
     Route::post(
         '/pos/increase-cart-item',
         [PosController::class, 'increaseCart']
     )->name('pos.increase')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
 
     Route::post(
         '/pos/decrease-cart-item',
         [PosController::class, 'decreaseCart']
     )->name('pos.decrease')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
 
     Route::post(
         '/pos/clear',
         [PosController::class, 'clearCart']
     )->name('pos.clear')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
 
     Route::get(
         '/pos/checkout',
@@ -183,19 +183,19 @@ Route::middleware([
             ->route('pos.index')
             ->with('error', 'Use the Complete Sale button to checkout.')
     )->name('pos.checkout.get')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
 
     Route::post(
         '/pos/checkout',
         [PosController::class, 'checkout']
     )->name('pos.checkout')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
 
     Route::get(
         '/pos/receipt/{id}',
         [PosController::class, 'receipt']
     )->name('pos.receipt')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
 
     /*
     |--------------------------------------------------------------------------
@@ -207,7 +207,7 @@ Route::middleware([
     |
     */
 
-    Route::middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER')->group(function () {
+    Route::middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER')->group(function () {
         Route::get('/cart', [PosController::class, 'index'])->name('cart.index');
         Route::post('/cart/add', [PosController::class, 'addToCart'])->name('cart.add');
         Route::post('/cart/update', [PosController::class, 'updateCart'])->name('cart.update');
@@ -257,26 +257,26 @@ Route::middleware([
         '/sales',
         [SaleController::class, 'index']
     )->name('sales.index')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER,CASHIER,WAITER,SERVER');
 
     Route::get(
         '/sales/{sale}/receipt',
         [SaleController::class, 'receipt']
     )->name('sales.receipt')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER,CASHIER,WAITER,SERVER');
 
     Route::get(
         '/sales/{sale}/print',
         [SaleController::class, 'print']
     )->name('sales.print')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER,CASHIER,WAITER,SERVER');
 
     Route::post(
         '/sales/{sale}/refund',
         [SaleController::class, 'refund']
     )
     ->name('sales.refund')
-    ->middleware('admin.manager');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER');
 
     /*
     |--------------------------------------------------------------------------
@@ -294,7 +294,7 @@ Route::middleware([
         '/my-report',
         [ReportController::class, 'myReport']
     )->name('reports.my')
-    ->middleware('operational.role:CASHIER');
+    ->middleware('operational.role:CASHIER,WAITER,SERVER');
 
     /*
     |--------------------------------------------------------------------------
@@ -306,7 +306,7 @@ Route::middleware([
         '/refunds',
         [RefundController::class, 'index']
     )->name('refunds.index')
-    ->middleware('admin.manager');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER');
 
     /*
     |--------------------------------------------------------------------------
@@ -318,37 +318,37 @@ Route::middleware([
         '/shifts/open',
         [ShiftController::class, 'openForm']
     )->name('shifts.open.form')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
 
     Route::post(
         '/shifts/open',
         [ShiftController::class, 'open']
     )->name('shifts.open')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
 
     Route::get(
         '/shifts/current',
         [ShiftController::class, 'current']
     )->name('shifts.current')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
 
     Route::post(
         '/shifts/close',
         [ShiftController::class, 'close']
     )->name('shifts.close')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
 
     Route::get(
         '/shifts/history',
         [ShiftController::class, 'history']
     )->name('shifts.history')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
 
     Route::get(
         '/shifts/{shift}/print',
         [ShiftController::class, 'print']
     )->name('shifts.print')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
 
     /*
     |--------------------------------------------------------------------------

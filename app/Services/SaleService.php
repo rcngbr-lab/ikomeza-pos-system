@@ -92,6 +92,7 @@ class SaleService
                 SaleItem::create([
                     'sale_id' => $sale->id,
                     'product_id' => $product->id,
+                    'department_id' => $product->department_id,
                     'quantity' => $quantity,
                     'price' => $price,
                     'unit_price' => $price,
@@ -112,6 +113,7 @@ class SaleService
 
                     Stock::create([
                         'product_id' => $product->id,
+                        'department_id' => $product->department_id,
                         'type' => 'sale',
                         'quantity' => $quantity,
                         'before_stock' => $beforeStock,
@@ -122,6 +124,7 @@ class SaleService
 
                     StockMovement::create([
                         'product_id' => $product->id,
+                        'department_id' => $product->department_id,
                         'branch_id' => $user->branch_id,
                         'user_id' => $user->id,
                         'type' => 'SALE',

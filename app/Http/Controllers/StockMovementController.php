@@ -5,17 +5,27 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 
 use App\Models\StockMovement;
+use App\Services\DepartmentAccessService;
 
 class StockMovementController extends Controller
 {
     public function index(Request $request)
     {
+        $departmentAccess = app(DepartmentAccessService::class);
+        $selectedDepartmentId = $departmentAccess->selectedDepartmentId(
+            $request->user(),
+            $request->integer('department_id') ?: null
+        );
+
+        $departments = $departmentAccess->visibleDepartments($request->user());
+
         $query = StockMovement::with([
 
             'product',
+            'department',
             'user',
 
-        ]);
+        ])->when($selectedDepartmentId, fn ($builder) => $builder->where('department_id', $selectedDepartmentId));
 
         if ($request->search) {
 
@@ -113,7 +123,7 @@ class StockMovementController extends Controller
 
         return view(
             'stock_logs.index',
-            compact('logs')
+            compact('logs', 'departments', 'selectedDepartmentId')
         );
     }
 }

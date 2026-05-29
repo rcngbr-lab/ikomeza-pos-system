@@ -69,6 +69,26 @@
             <div class="flex gap-2 overflow-x-auto pb-1">
                 <button
                     type="button"
+                    class="department-chip rounded-full bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white"
+                    data-department="All"
+                >
+                    All Departments
+                </button>
+
+                @foreach($departments as $department)
+                    <button
+                        type="button"
+                        class="department-chip rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700"
+                        data-department="{{ $department->name }}"
+                    >
+                        {{ $department->name }}
+                    </button>
+                @endforeach
+            </div>
+
+            <div class="flex gap-2 overflow-x-auto pb-1">
+                <button
+                    type="button"
                     class="category-chip rounded-full bg-slate-950 px-5 py-2.5 text-sm font-bold text-white"
                     data-category="All"
                 >
@@ -98,6 +118,7 @@
                         action="{{ route('pos.add') }}"
                         class="product-card group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md"
                         data-category="{{ $product->category->name ?? 'Uncategorized' }}"
+                        data-department="{{ $product->department->name ?? 'Unassigned' }}"
                         data-name="{{ strtolower($product->name) }}"
                         data-barcode="{{ strtolower($product->barcode ?? '') }}"
                     >
@@ -119,6 +140,10 @@
                                     {{ $isOut ? 'OUT' : ($isLow ? 'LOW' : 'OK') }}
                                 </span>
                             </div>
+
+                            <span class="mt-3 inline-flex w-fit rounded-full px-2.5 py-1 text-[10px] font-black {{ ($product->department?->code ?? '') === 'KITCHEN' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700' }}">
+                                {{ $product->department->name ?? 'Unassigned' }}
+                            </span>
 
                             <div class="mt-6">
                                 <p class="text-2xl font-black text-slate-950">
@@ -178,6 +203,9 @@
                                     </p>
                                     <p class="mt-1 text-xs text-slate-500">
                                         {{ number_format($item['price']) }} RWF
+                                    </p>
+                                    <p class="mt-1 text-[11px] font-black uppercase tracking-wide {{ ($item['department_code'] ?? '') === 'KITCHEN' ? 'text-amber-700' : 'text-indigo-700' }}">
+                                        {{ $item['department'] ?? 'Unassigned' }}
                                     </p>
                                 </div>
                                 <p class="text-sm font-black text-slate-950">
@@ -285,7 +313,9 @@
     const searchInput = document.getElementById('productSearch');
     const barcodeInput = document.getElementById('barcodeSearch');
     const categoryChips = Array.from(document.querySelectorAll('.category-chip'));
+    const departmentChips = Array.from(document.querySelectorAll('.department-chip'));
     let activeCategory = 'All';
+    let activeDepartment = 'All';
 
     function filterProducts() {
         const query = (searchInput?.value || '').toLowerCase().trim();
@@ -293,12 +323,29 @@
 
         productCards.forEach((card) => {
             const matchesCategory = activeCategory === 'All' || card.dataset.category === activeCategory;
+            const matchesDepartment = activeDepartment === 'All' || card.dataset.department === activeDepartment;
             const matchesSearch = !query || card.dataset.name.includes(query) || card.dataset.barcode.includes(query);
             const matchesBarcode = !barcode || card.dataset.barcode.includes(barcode);
 
-            card.classList.toggle('hidden', !(matchesCategory && matchesSearch && matchesBarcode));
+            card.classList.toggle('hidden', !(matchesDepartment && matchesCategory && matchesSearch && matchesBarcode));
         });
     }
+
+    departmentChips.forEach((chip) => {
+        chip.addEventListener('click', () => {
+            activeDepartment = chip.dataset.department;
+
+            departmentChips.forEach((item) => {
+                item.classList.remove('bg-indigo-600', 'text-white');
+                item.classList.add('bg-white', 'text-slate-700', 'border', 'border-slate-200');
+            });
+
+            chip.classList.add('bg-indigo-600', 'text-white');
+            chip.classList.remove('bg-white', 'text-slate-700', 'border', 'border-slate-200');
+
+            filterProducts();
+        });
+    });
 
     categoryChips.forEach((chip) => {
         chip.addEventListener('click', () => {

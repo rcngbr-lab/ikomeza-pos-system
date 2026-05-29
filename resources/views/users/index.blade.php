@@ -54,6 +54,10 @@
                         </th>
 
                         <th class="px-4 py-4 text-left text-sm font-semibold">
+                            Department
+                        </th>
+
+                        <th class="px-4 py-4 text-left text-sm font-semibold">
                             Status
                         </th>
 
@@ -73,6 +77,16 @@
 
                             <td class="px-4 py-4">
                                 {{ $user->name }}
+                            </td>
+
+                            <td class="px-4 py-4">
+
+                                <span class="px-3 py-1 text-xs rounded-full bg-indigo-100 text-indigo-700">
+
+                                    {{ $user->department->name ?? 'All' }}
+
+                                </span>
+
                             </td>
 
                             <td class="px-4 py-4">
@@ -141,7 +155,7 @@
                         <tr>
 
                             <td
-                                colspan="6"
+                                colspan="7"
                                 class="px-4 py-10 text-center text-gray-500"
                             >
                                 No users found

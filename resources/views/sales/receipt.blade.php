@@ -350,6 +350,10 @@ function printReceipt()
 
                     <td>
                         {{ $item->product->name ?? 'Deleted' }}
+                        <br>
+                        <small>
+                            {{ $item->department->name ?? $item->product?->department?->name ?? 'Department' }}
+                        </small>
                     </td>
 
                     <td class="right">

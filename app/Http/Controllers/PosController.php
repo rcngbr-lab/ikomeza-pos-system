@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\Department;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\Shift;
+use App\Services\CategoryCatalogService;
 use App\Services\SaleService;
 use Illuminate\Http\Request;
 
@@ -13,6 +15,8 @@ class PosController extends Controller
 {
     public function index(Request $request)
     {
+        app(CategoryCatalogService::class)->ensureDefaults();
+
         $shift = Shift::where('user_id', auth()->id())
             ->where(function ($query) {
                 $query->where('is_open', true)
@@ -27,19 +31,22 @@ class PosController extends Controller
                 ->with('error', 'Open a shift before using the cashier terminal.');
         }
 
-        $products = Product::with('category')
+        $products = Product::with('category', 'department')
             ->where('active', true)
             ->orderBy('name')
             ->get();
 
-        $categories = Category::orderBy('name')->get();
+        $categories = Category::with('department')->orderBy('name')->get();
+        $departments = Department::where('active', true)
+            ->orderBy('sort_order')
+            ->get();
         $cart = session()->get('cart', []);
         $total = $this->cartTotal($cart);
         $paymentMethods = Sale::PAYMENT_METHOD_LABELS;
 
         return view(
             'pos.index',
-            compact('products', 'categories', 'cart', 'total', 'shift', 'paymentMethods')
+            compact('products', 'categories', 'departments', 'cart', 'total', 'shift', 'paymentMethods')
         );
     }
 
@@ -50,7 +57,7 @@ class PosController extends Controller
             'quantity' => ['nullable', 'integer', 'min:1'],
         ]);
 
-        $product = Product::findOrFail($request->product_id);
+        $product = Product::with('category', 'department')->findOrFail($request->product_id);
         $quantity = (int) $request->input('quantity', 1);
 
         if ($product->track_stock && $product->stock <= 0) {
@@ -71,6 +78,9 @@ class PosController extends Controller
             'name' => $product->name,
             'barcode' => $product->barcode,
             'category' => $product->category->name ?? 'Uncategorized',
+            'department_id' => $product->department_id,
+            'department' => $product->department->name ?? 'Unassigned',
+            'department_code' => $product->department->code ?? null,
             'price' => (float) $product->selling_price,
             'quantity' => $newQuantity,
         ];
@@ -188,10 +198,10 @@ class PosController extends Controller
 
     public function receipt($id)
     {
-        $sale = Sale::with('items.product', 'user', 'shift')->findOrFail($id);
+        $sale = Sale::with('items.product.department', 'items.department', 'user', 'shift')->findOrFail($id);
 
         if (
-            auth()->user()->hasOperationalRole('CASHIER')
+            auth()->user()->hasOperationalRole('CASHIER', 'WAITER', 'SERVER')
             && $sale->user_id !== auth()->id()
         ) {
             abort(403);

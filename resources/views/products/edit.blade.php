@@ -175,6 +175,49 @@
 
                 </div>
 
+                <!-- DEPARTMENT -->
+
+                <div>
+
+                    <label
+                        class="
+                            block
+                            text-sm
+                            font-bold
+                            text-slate-700
+                            mb-2
+                        "
+                    >
+                        Department
+                    </label>
+
+                    <select
+                        name="department_id"
+                        class="
+                            w-full
+                            rounded-2xl
+                            border
+                            border-slate-300
+                            px-4
+                            py-4
+                            focus:outline-none
+                            focus:ring-2
+                            focus:ring-blue-500
+                        "
+                        required
+                    >
+                        @foreach($departments as $department)
+                            <option
+                                value="{{ $department->id }}"
+                                @selected(old('department_id', $product->department_id) == $department->id)
+                            >
+                                {{ $department->name }}
+                            </option>
+                        @endforeach
+                    </select>
+
+                </div>
+
                 <!-- CATEGORY -->
 
                 <div>
@@ -223,6 +266,9 @@
                             >
 
                                 {{ $category->name }}
+                                @if($category->department)
+                                    - {{ $category->department->name }}
+                                @endif
 
                             </option>
 

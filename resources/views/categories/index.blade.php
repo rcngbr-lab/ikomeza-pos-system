@@ -64,7 +64,7 @@
     </div>
 
     <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <form method="GET" action="{{ route('categories.index') }}" class="flex flex-col gap-3 sm:flex-row">
+        <form method="GET" action="{{ route('categories.index') }}" class="grid gap-3 lg:grid-cols-[1fr_220px_auto]">
             <input
                 type="search"
                 name="search"
@@ -72,6 +72,18 @@
                 placeholder="Search categories..."
                 class="min-w-0 flex-1 rounded-2xl border border-slate-300 px-5 py-3 text-sm font-semibold focus:border-indigo-500 focus:ring-indigo-500"
             >
+
+            <select
+                name="department_id"
+                class="rounded-2xl border border-slate-300 px-5 py-3 text-sm font-semibold focus:border-indigo-500 focus:ring-indigo-500"
+            >
+                <option value="">All Departments</option>
+                @foreach($departments as $department)
+                    <option value="{{ $department->id }}" @selected((int) $selectedDepartmentId === (int) $department->id)>
+                        {{ $department->name }}
+                    </option>
+                @endforeach
+            </select>
 
             <button
                 type="submit"
@@ -88,6 +100,7 @@
                 <thead class="bg-slate-950 text-left text-xs uppercase tracking-wide text-white">
                     <tr>
                         <th class="px-5 py-4">Category</th>
+                        <th class="px-5 py-4">Department</th>
                         <th class="px-5 py-4">Code</th>
                         <th class="px-5 py-4">Products</th>
                         <th class="px-5 py-4">Sort</th>
@@ -103,6 +116,11 @@
                                 <p class="mt-1 max-w-xl truncate text-sm text-slate-500">
                                     {{ $category->description ?: 'No description' }}
                                 </p>
+                            </td>
+                            <td class="px-5 py-4">
+                                <span class="rounded-full px-3 py-1 text-xs font-black {{ ($category->department?->code ?? '') === 'KITCHEN' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700' }}">
+                                    {{ $category->department->name ?? 'Unassigned' }}
+                                </span>
                             </td>
                             <td class="px-5 py-4 font-bold text-slate-600">
                                 {{ $category->code ?: 'N/A' }}
@@ -154,7 +172,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-5 py-10 text-center font-bold text-slate-500">
+                            <td colspan="7" class="px-5 py-10 text-center font-bold text-slate-500">
                                 No categories found.
                             </td>
                         </tr>

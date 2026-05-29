@@ -433,6 +433,21 @@
 
         </select>
 
+        <select
+            name="department_id"
+            class="filter-select"
+        >
+            <option value="">
+                All Departments
+            </option>
+
+            @foreach($departments as $department)
+                <option value="{{ $department->id }}" @selected((int) $selectedDepartmentId === (int) $department->id)>
+                    {{ $department->name }}
+                </option>
+            @endforeach
+        </select>
+
         <input
             type="text"
             name="search"
@@ -465,6 +480,7 @@
                 <th>ID</th>
                 <th>Invoice</th>
                 <th>Cashier</th>
+                <th>Departments</th>
                 <th>Total</th>
                 <th>Status</th>
                 <th>Date</th>
@@ -496,6 +512,16 @@
 
                     <td>
                         {{ $sale->user?->name }}
+                    </td>
+
+                    <td>
+                        <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                            @foreach($sale->items->pluck('department.name')->filter()->unique() as $departmentName)
+                                <span class="status" style="background:#eef2ff; color:#3730a3;">
+                                    {{ $departmentName }}
+                                </span>
+                            @endforeach
+                        </div>
                     </td>
 
                     <td>
@@ -581,7 +607,7 @@
 
                 <tr>
 
-                    <td colspan="7">
+                    <td colspan="8">
                         No sales found
                     </td>
 

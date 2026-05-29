@@ -11,6 +11,7 @@ use App\Models\SaleItem;
 use App\Models\Shift;
 use App\Models\StockMovement;
 use App\Models\User;
+use App\Services\DepartmentAccessService;
 
 class DashboardController extends Controller
 {
@@ -18,6 +19,7 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
         $analytics = $this->analyticsFor($user);
+        $selectedDepartmentId = app(DepartmentAccessService::class)->selectedDepartmentId($user);
 
         if ($user->hasOperationalRole('ADMIN', 'ADMINISTRATOR')) {
             return view('dashboard.admin', array_merge($analytics, [
@@ -35,7 +37,7 @@ class DashboardController extends Controller
             ]));
         }
 
-        if ($user->hasOperationalRole('MANAGER')) {
+        if ($user->hasOperationalRole('MANAGER', 'KITCHEN_MANAGER', 'KITCHEN_CHIEF', 'BAR_MANAGER', 'BAR_CHIEF', 'BARTENDER')) {
             return view('dashboard.manager', [
                 'todayRevenue' => $analytics['todayRevenue'],
                 'todayTransactions' => $analytics['todayTransactions'],
@@ -45,11 +47,15 @@ class DashboardController extends Controller
                 'cashierPerformance' => $this->cashierPerformance(),
                 'shiftDifferences' => $this->recentShiftDifferences(),
                 'pendingRefunds' => $this->pendingRefunds(),
-                'recentMovements' => StockMovement::with('product', 'user')->latest()->take(6)->get(),
+                'recentMovements' => StockMovement::with('product', 'department', 'user')
+                    ->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))
+                    ->latest()
+                    ->take(6)
+                    ->get(),
             ]);
         }
 
-        if ($user->hasOperationalRole('CASHIER')) {
+        if ($user->hasOperationalRole('CASHIER', 'WAITER', 'SERVER')) {
             $activeShift = Shift::where('user_id', $user->id)
                 ->where(function ($query) {
                     $query->where('is_open', true)
@@ -98,46 +104,70 @@ class DashboardController extends Controller
 
     private function analyticsFor($user): array
     {
+        $selectedDepartmentId = app(DepartmentAccessService::class)->selectedDepartmentId($user);
         $salesQuery = Sale::query();
 
-        if ($user->hasOperationalRole('CASHIER')) {
+        if ($selectedDepartmentId) {
+            $salesQuery->whereHas('items', fn ($items) => $items->where('department_id', $selectedDepartmentId));
+        }
+
+        if ($user->hasOperationalRole('CASHIER', 'WAITER', 'SERVER')) {
             $salesQuery->where('user_id', $user->id);
         }
 
         $recentSales = (clone $salesQuery)
-            ->with('user')
+            ->with('user', 'items.department')
             ->latest()
             ->take(10)
             ->get();
 
-        $todayRevenue = (clone $salesQuery)->whereDate('created_at', today())->sum('grand_total');
         $todayTransactions = (clone $salesQuery)->whereDate('created_at', today())->count();
-        $weekRevenue = (clone $salesQuery)
-            ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
-            ->sum('grand_total');
-        $monthRevenue = (clone $salesQuery)
-            ->whereMonth('created_at', now()->month)
-            ->whereYear('created_at', now()->year)
-            ->sum('grand_total');
-        $yearRevenue = (clone $salesQuery)
-            ->whereYear('created_at', now()->year)
-            ->sum('grand_total');
 
-        $topProducts = SaleItem::with('product')
+        if ($selectedDepartmentId) {
+            $todayRevenue = $this->departmentRevenueFor($salesQuery, $selectedDepartmentId, fn ($sale) => $sale->whereDate('created_at', today()));
+            $weekRevenue = $this->departmentRevenueFor($salesQuery, $selectedDepartmentId, fn ($sale) => $sale->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]));
+            $monthRevenue = $this->departmentRevenueFor($salesQuery, $selectedDepartmentId, fn ($sale) => $sale->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year));
+            $yearRevenue = $this->departmentRevenueFor($salesQuery, $selectedDepartmentId, fn ($sale) => $sale->whereYear('created_at', now()->year));
+        } else {
+            $todayRevenue = (clone $salesQuery)->whereDate('created_at', today())->sum('grand_total');
+            $weekRevenue = (clone $salesQuery)
+                ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
+                ->sum('grand_total');
+            $monthRevenue = (clone $salesQuery)
+                ->whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->sum('grand_total');
+            $yearRevenue = (clone $salesQuery)
+                ->whereYear('created_at', now()->year)
+                ->sum('grand_total');
+        }
+
+        $topProducts = SaleItem::with('product.department')
+            ->when($selectedDepartmentId, fn ($items) => $items->where('department_id', $selectedDepartmentId))
             ->selectRaw('product_id, SUM(quantity) as units_sold, SUM(subtotal) as revenue')
             ->groupBy('product_id')
             ->orderByDesc('units_sold')
             ->take(5)
             ->get();
 
-        $paymentBreakdown = Sale::query()
-            ->selectRaw('payment_method, SUM(grand_total) as total, COUNT(*) as count')
-            ->groupBy('payment_method')
-            ->orderByDesc('total')
-            ->get();
+        $paymentBreakdown = $selectedDepartmentId
+            ? SaleItem::query()
+                ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+                ->where('sale_items.department_id', $selectedDepartmentId)
+                ->selectRaw('sales.payment_method, SUM(sale_items.subtotal) as total, COUNT(DISTINCT sales.id) as count')
+                ->groupBy('sales.payment_method')
+                ->orderByDesc('total')
+                ->get()
+            : Sale::query()
+                ->selectRaw('payment_method, SUM(grand_total) as total, COUNT(*) as count')
+                ->groupBy('payment_method')
+                ->orderByDesc('total')
+                ->get();
 
-        $profit = SaleItem::sum('profit');
-        $lowStockProducts = Product::whereColumn('stock', '<=', 'alert_stock')
+        $profit = SaleItem::when($selectedDepartmentId, fn ($items) => $items->where('department_id', $selectedDepartmentId))->sum('profit');
+        $lowStockProducts = Product::with('department')
+            ->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))
+            ->whereColumn('stock', '<=', 'alert_stock')
             ->orderBy('stock')
             ->take(10)
             ->get();
@@ -154,7 +184,9 @@ class DashboardController extends Controller
             'topProducts' => $topProducts,
             'paymentBreakdown' => $paymentBreakdown,
             'lowStockProducts' => $lowStockProducts,
-            'inventoryValue' => Product::selectRaw('SUM(buy_price * stock) as total')->value('total') ?? 0,
+            'inventoryValue' => Product::when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))
+                ->selectRaw('SUM(buy_price * stock) as total')
+                ->value('total') ?? 0,
             'openShifts' => Shift::where(function ($query) {
                 $query->where('is_open', true)
                     ->orWhere('status', 'OPEN');
@@ -167,9 +199,15 @@ class DashboardController extends Controller
         return User::query()
             ->where(function ($query) {
                 $query->whereRaw('UPPER(role) = ?', ['CASHIER'])
+                    ->orWhereRaw('UPPER(role) = ?', ['WAITER'])
+                    ->orWhereRaw('UPPER(role) = ?', ['SERVER'])
                     ->orWhereHas('roles', function ($roles) {
                         $roles->whereRaw('UPPER(name) = ?', ['CASHIER'])
-                            ->orWhereRaw('UPPER(code) = ?', ['CASHIER']);
+                            ->orWhereRaw('UPPER(name) = ?', ['WAITER'])
+                            ->orWhereRaw('UPPER(name) = ?', ['SERVER'])
+                            ->orWhereRaw('UPPER(code) = ?', ['CASHIER'])
+                            ->orWhereRaw('UPPER(code) = ?', ['WAITER'])
+                            ->orWhereRaw('UPPER(code) = ?', ['SERVER']);
                     });
             })
             ->withCount([
@@ -187,6 +225,17 @@ class DashboardController extends Controller
             ->orderByDesc('revenue_today')
             ->take(8)
             ->get();
+    }
+
+    private function departmentRevenueFor($salesQuery, int $departmentId, callable $dateScope): float
+    {
+        $scopedSales = $dateScope(clone $salesQuery);
+
+        return (float) SaleItem::where('department_id', $departmentId)
+            ->whereHas('sale', function ($sale) use ($scopedSales) {
+                $sale->whereIn('id', $scopedSales->select('id'));
+            })
+            ->sum('subtotal');
     }
 
     private function recentShiftDifferences()

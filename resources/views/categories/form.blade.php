@@ -45,6 +45,27 @@
 
         <div>
             <label class="mb-2 block text-sm font-bold text-slate-700">
+                Department
+            </label>
+            <select
+                name="department_id"
+                required
+                class="w-full rounded-2xl border border-slate-300 px-5 py-4 font-semibold focus:border-indigo-500 focus:ring-indigo-500"
+            >
+                <option value="">Select Department</option>
+                @foreach($departments as $department)
+                    <option
+                        value="{{ $department->id }}"
+                        @selected(old('department_id', $category->department_id) == $department->id)
+                    >
+                        {{ $department->name }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+
+        <div>
+            <label class="mb-2 block text-sm font-bold text-slate-700">
                 Sort Order
             </label>
             <input

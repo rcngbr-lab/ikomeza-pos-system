@@ -30,6 +30,25 @@
 
     </div>
 
+    <form method="GET" action="{{ route('products.index') }}" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div class="grid gap-3 md:grid-cols-[220px_1fr_auto]">
+            <select name="department_id" class="rounded-xl border-slate-200 bg-slate-50 text-sm font-semibold">
+                <option value="">All Departments</option>
+                @foreach($departments as $department)
+                    <option value="{{ $department->id }}" @selected((int) $selectedDepartmentId === (int) $department->id)>
+                        {{ $department->name }}
+                    </option>
+                @endforeach
+            </select>
+
+            <div class="hidden md:block"></div>
+
+            <button class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-black text-white">
+                Filter
+            </button>
+        </div>
+    </form>
+
     <!-- PRODUCTS TABLE -->
 
     <div
@@ -65,6 +84,10 @@
 
                     <th class="text-left p-4">
                         Category
+                    </th>
+
+                    <th class="text-left p-4">
+                        Department
                     </th>
 
                     <th class="text-left p-4">
@@ -154,6 +177,14 @@
 
                         </td>
 
+                        <td class="p-4">
+
+                            <span class="rounded-full px-3 py-1 text-xs font-black {{ ($product->department?->code ?? '') === 'KITCHEN' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700' }}">
+                                {{ $product->department->name ?? 'Unassigned' }}
+                            </span>
+
+                        </td>
+
                         <!-- ACTIONS -->
 
                         <td class="p-4">
@@ -211,7 +242,7 @@
                     <tr>
 
                         <td
-                            colspan="6"
+                            colspan="7"
                             class="
                                 p-6
                                 text-center

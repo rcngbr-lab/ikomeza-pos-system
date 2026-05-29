@@ -9,6 +9,8 @@ use App\Models\Category;
 use App\Models\StockMovement;
 use App\Models\Stock;
 use App\Services\CategoryCatalogService;
+use App\Services\DepartmentAccessService;
+use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
@@ -18,19 +20,32 @@ class ProductController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function index()
+    public function index(Request $request, DepartmentAccessService $departmentAccess)
     {
-        $products = Product::with('category')
+        app(CategoryCatalogService::class)->ensureDefaults();
+
+        $selectedDepartmentId = $departmentAccess->selectedDepartmentId(
+            $request->user(),
+            $request->integer('department_id') ?: null
+        );
+
+        $departments = $departmentAccess->visibleDepartments($request->user());
+
+        $products = Product::with('category', 'department')
+
+            ->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))
 
             ->latest()
 
-            ->paginate(20);
+            ->paginate(20)
+
+            ->withQueryString();
 
         return view(
 
             'products.index',
 
-            compact('products')
+            compact('products', 'departments', 'selectedDepartmentId')
 
         );
     }
@@ -45,7 +60,11 @@ class ProductController extends Controller
     {
         app(CategoryCatalogService::class)->ensureDefaults();
 
-        $categories = Category::orderBy('name')
+        $departments = app(DepartmentAccessService::class)->visibleDepartments(auth()->user());
+
+        $categories = Category::with('department')
+            ->whereIn('department_id', $departments->pluck('id')->all())
+            ->orderBy('name')
 
             ->get();
 
@@ -53,7 +72,7 @@ class ProductController extends Controller
 
             'products.create',
 
-            compact('categories')
+            compact('categories', 'departments')
 
         );
     }
@@ -79,6 +98,10 @@ class ProductController extends Controller
             'category_id' =>
 
                 'required|exists:categories,id',
+
+            'department_id' =>
+
+                'required|exists:departments,id',
 
             'buy_price' =>
 
@@ -106,6 +129,16 @@ class ProductController extends Controller
 
         ]);
 
+        app(DepartmentAccessService::class)->authorize(
+            $request->user(),
+            (int) $request->department_id
+        );
+
+        $this->ensureCategoryBelongsToDepartment(
+            (int) $request->category_id,
+            (int) $request->department_id
+        );
+
         Product::create([
 
             'product_code' =>
@@ -127,6 +160,10 @@ class ProductController extends Controller
             'category_id' =>
 
                 $request->category_id,
+
+            'department_id' =>
+
+                $request->department_id,
 
             'product_type' =>
 
@@ -202,7 +239,16 @@ class ProductController extends Controller
     {
         app(CategoryCatalogService::class)->ensureDefaults();
 
-        $categories = Category::orderBy('name')
+        app(DepartmentAccessService::class)->authorize(
+            auth()->user(),
+            $product->department_id
+        );
+
+        $departments = app(DepartmentAccessService::class)->visibleDepartments(auth()->user());
+
+        $categories = Category::with('department')
+            ->whereIn('department_id', $departments->pluck('id')->all())
+            ->orderBy('name')
 
             ->get();
 
@@ -213,7 +259,8 @@ class ProductController extends Controller
             compact(
 
                 'product',
-                'categories'
+                'categories',
+                'departments'
 
             )
 
@@ -231,6 +278,11 @@ class ProductController extends Controller
         Product $product
     )
     {
+        app(DepartmentAccessService::class)->authorize(
+            $request->user(),
+            $product->department_id
+        );
+
         $request->validate([
 
             'name' =>
@@ -244,6 +296,10 @@ class ProductController extends Controller
             'category_id' =>
 
                 'required|exists:categories,id',
+
+            'department_id' =>
+
+                'required|exists:departments,id',
 
             'buy_price' =>
 
@@ -271,6 +327,16 @@ class ProductController extends Controller
 
         ]);
 
+        app(DepartmentAccessService::class)->authorize(
+            $request->user(),
+            (int) $request->department_id
+        );
+
+        $this->ensureCategoryBelongsToDepartment(
+            (int) $request->category_id,
+            (int) $request->department_id
+        );
+
         $product->update([
 
             'barcode' =>
@@ -288,6 +354,10 @@ class ProductController extends Controller
             'category_id' =>
 
                 $request->category_id,
+
+            'department_id' =>
+
+                $request->department_id,
 
             'product_type' =>
 
@@ -340,6 +410,11 @@ class ProductController extends Controller
 
     public function adjust(Product $product)
     {
+        app(DepartmentAccessService::class)->authorize(
+            auth()->user(),
+            $product->department_id
+        );
+
         return view(
 
             'products.adjust',
@@ -360,6 +435,11 @@ class ProductController extends Controller
         Product $product
     )
     {
+        app(DepartmentAccessService::class)->authorize(
+            $request->user(),
+            $product->department_id
+        );
+
         $request->validate([
 
             'quantity' =>
@@ -437,6 +517,10 @@ class ProductController extends Controller
 
                 $product->id,
 
+            'department_id' =>
+
+                $product->department_id,
+
             'user_id' =>
 
                 auth()->id(),
@@ -468,6 +552,10 @@ class ProductController extends Controller
             'product_id' =>
 
                 $product->id,
+
+            'department_id' =>
+
+                $product->department_id,
 
             'type' =>
 
@@ -516,6 +604,11 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
+        app(DepartmentAccessService::class)->authorize(
+            auth()->user(),
+            $product->department_id
+        );
+
         $product->delete();
 
         return redirect()
@@ -538,5 +631,16 @@ class ProductController extends Controller
         } while (Product::where('product_code', $code)->exists());
 
         return $code;
+    }
+
+    private function ensureCategoryBelongsToDepartment(int $categoryId, int $departmentId): void
+    {
+        $category = Category::findOrFail($categoryId);
+
+        if ($category->department_id && (int) $category->department_id !== $departmentId) {
+            throw ValidationException::withMessages([
+                'category_id' => 'Selected category belongs to a different department.',
+            ]);
+        }
     }
 }

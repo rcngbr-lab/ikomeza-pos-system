@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\Branch;
+use App\Models\Department;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\DepartmentCatalogService;
 use App\Services\UserService;
 
 class UserController extends Controller
@@ -15,6 +17,7 @@ class UserController extends Controller
     {
         $usersQuery = User::with([
             'branch',
+            'department',
             'roles',
         ])->latest();
 
@@ -29,8 +32,11 @@ class UserController extends Controller
 
     public function create()
     {
+        app(DepartmentCatalogService::class)->ensureDefaults();
+
         return view('users.create', [
             'branches' => $this->availableBranches(),
+            'departments' => $this->availableDepartments(),
             'roles' => $this->availableRoles(),
         ]);
     }
@@ -55,6 +61,7 @@ class UserController extends Controller
         return view('users.edit', [
             'user' => $user,
             'branches' => $this->availableBranches(),
+            'departments' => $this->availableDepartments(),
             'roles' => $this->availableRoles(),
         ]);
     }
@@ -84,9 +91,15 @@ class UserController extends Controller
     {
         $query->where(function ($users) {
             $users->whereRaw('UPPER(role) = ?', ['CASHIER'])
+                ->orWhereRaw('UPPER(role) = ?', ['WAITER'])
+                ->orWhereRaw('UPPER(role) = ?', ['SERVER'])
                 ->orWhereHas('roles', function ($roles) {
                     $roles->whereRaw('UPPER(name) = ?', ['CASHIER'])
-                        ->orWhereRaw('UPPER(code) = ?', ['CASHIER']);
+                        ->orWhereRaw('UPPER(name) = ?', ['WAITER'])
+                        ->orWhereRaw('UPPER(name) = ?', ['SERVER'])
+                        ->orWhereRaw('UPPER(code) = ?', ['CASHIER'])
+                        ->orWhereRaw('UPPER(code) = ?', ['WAITER'])
+                        ->orWhereRaw('UPPER(code) = ?', ['SERVER']);
                 });
         });
 
@@ -113,11 +126,22 @@ class UserController extends Controller
         if ($this->managerIsLimited()) {
             $query->where(function ($roles) {
                 $roles->whereRaw('UPPER(name) = ?', ['CASHIER'])
-                    ->orWhereRaw('UPPER(code) = ?', ['CASHIER']);
+                    ->orWhereRaw('UPPER(name) = ?', ['WAITER'])
+                    ->orWhereRaw('UPPER(name) = ?', ['SERVER'])
+                    ->orWhereRaw('UPPER(code) = ?', ['CASHIER'])
+                    ->orWhereRaw('UPPER(code) = ?', ['WAITER'])
+                    ->orWhereRaw('UPPER(code) = ?', ['SERVER']);
             });
         }
 
         return $query->get();
+    }
+
+    private function availableDepartments()
+    {
+        return Department::where('active', true)
+            ->orderBy('sort_order')
+            ->get();
     }
 
     private function authorizeRequestedRole(string $roleName): void
@@ -132,7 +156,7 @@ class UserController extends Controller
 
         $roleCode = strtoupper((string) ($role->code ?? $role->name ?? $roleName));
 
-        if ($roleCode !== 'CASHIER') {
+        if (!in_array($roleCode, ['CASHIER', 'WAITER', 'SERVER'], true)) {
             abort(403);
         }
     }
@@ -143,7 +167,7 @@ class UserController extends Controller
             return;
         }
 
-        if (!$user->hasOperationalRole('CASHIER')) {
+        if (!$user->hasOperationalRole('CASHIER', 'WAITER', 'SERVER')) {
             abort(403);
         }
 

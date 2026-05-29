@@ -26,7 +26,7 @@
 
     <form
         method="GET"
-        class="grid grid-cols-1 md:grid-cols-5 gap-3 mb-5"
+        class="grid grid-cols-1 md:grid-cols-6 gap-3 mb-5"
     >
 
         <!-- SEARCH -->
@@ -80,6 +80,21 @@
 
         </select>
 
+        <select
+            name="department_id"
+            class="border rounded-xl px-4 py-3"
+        >
+            <option value="">
+                All Departments
+            </option>
+
+            @foreach($departments as $department)
+                <option value="{{ $department->id }}" @selected((int) $selectedDepartmentId === (int) $department->id)>
+                    {{ $department->name }}
+                </option>
+            @endforeach
+        </select>
+
         <!-- START -->
 
         <input
@@ -130,6 +145,10 @@
 
                         <th class="p-4 text-left">
                             Type
+                        </th>
+
+                        <th class="p-4 text-left">
+                            Department
                         </th>
 
                         <th class="p-4 text-left">
@@ -224,6 +243,12 @@
 
 </td>
 
+                            <td class="p-4">
+                                <span class="rounded-full px-3 py-1 text-xs font-black {{ ($log->department?->code ?? '') === 'KITCHEN' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700' }}">
+                                    {{ $log->department->name ?? $log->product?->department?->name ?? 'Unassigned' }}
+                                </span>
+                            </td>
+
                             <!-- QTY -->
 
                             <td class="p-4 font-bold">
@@ -273,7 +298,7 @@
                         <tr>
 
                             <td
-                                colspan="8"
+                                colspan="9"
                                 class="p-10 text-center text-slate-500"
                             >
 

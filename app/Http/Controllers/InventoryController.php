@@ -6,13 +6,24 @@ use Illuminate\Http\Request;
 use App\Models\Product;
 use App\Models\Stock;
 use App\Models\StockMovement;
+use App\Services\CategoryCatalogService;
+use App\Services\DepartmentAccessService;
 use Illuminate\Support\Facades\DB;
 
 class InventoryController extends Controller
 {
     public function index(Request $request)
     {
+        app(CategoryCatalogService::class)->ensureDefaults();
+
         $user = auth()->user();
+        $departmentAccess = app(DepartmentAccessService::class);
+        $selectedDepartmentId = $departmentAccess->selectedDepartmentId(
+            $user,
+            $request->integer('department_id') ?: null
+        );
+
+        $departments = $departmentAccess->visibleDepartments($user);
 
         /*
         |--------------------------------------------------------------------------
@@ -22,7 +33,8 @@ class InventoryController extends Controller
 
         $filter = $request->filter;
 
-        $stockHistory = Stock::with('product', 'user');
+        $stockHistory = Stock::with('product.department', 'department', 'user')
+            ->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId));
 
         /*
         |--------------------------------------------------------------------------
@@ -30,7 +42,7 @@ class InventoryController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        if ($user->hasOperationalRole('CASHIER')) {
+        if ($user->hasOperationalRole('CASHIER', 'WAITER', 'SERVER')) {
 
             $stockHistory->where(
                 'user_id',
@@ -85,12 +97,16 @@ class InventoryController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $products = Product::with('category')
+        $products = Product::with('category', 'department')
+            ->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))
             ->latest()
             ->paginate(10);
-            $totalProducts = Product::count();
+        $totalProducts = Product::when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))->count();
 
-        $allProducts = Product::orderBy('name')->get();
+        $allProducts = Product::with('department')
+            ->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))
+            ->orderBy('name')
+            ->get();
 
         /*
         |--------------------------------------------------------------------------
@@ -98,7 +114,9 @@ class InventoryController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $lowStockProducts = Product::whereColumn(
+        $lowStockProducts = Product::with('department')
+            ->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))
+            ->whereColumn(
                 'stock',
                 '<=',
                 'alert_stock'
@@ -112,7 +130,9 @@ class InventoryController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $outOfStockProducts = Product::where(
+        $outOfStockProducts = Product::with('department')
+            ->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))
+            ->where(
             'stock',
             '<=',
             0
@@ -124,7 +144,8 @@ class InventoryController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $inventoryValue = Product::selectRaw(
+        $inventoryValue = Product::when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))
+            ->selectRaw(
             'SUM(buy_price * stock) as total'
         )->value('total');
 
@@ -148,6 +169,8 @@ class InventoryController extends Controller
                 'stockHistory',
                 'totalProducts',
                 'allProducts',
+                'departments',
+                'selectedDepartmentId',
             )
         );
     }
@@ -158,16 +181,21 @@ class InventoryController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function printHistory()
+    public function printHistory(Request $request)
     {
         $user = auth()->user();
+        $selectedDepartmentId = app(DepartmentAccessService::class)->selectedDepartmentId(
+            $user,
+            $request->integer('department_id') ?: null
+        );
 
         $stockHistory = Stock::with(
             'product',
+            'department',
             'user'
-        );
+        )->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId));
 
-        if ($user->hasOperationalRole('CASHIER')) {
+        if ($user->hasOperationalRole('CASHIER', 'WAITER', 'SERVER')) {
 
             $stockHistory->where(
                 'user_id',
@@ -198,12 +226,18 @@ class InventoryController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            app(DepartmentAccessService::class)->authorize(
+                $request->user(),
+                $product->department_id
+            );
+
             $before = $product->stock;
             $product->increment('stock', (int) $request->quantity);
             $product->refresh();
 
             Stock::create([
                 'product_id' => $product->id,
+                'department_id' => $product->department_id,
                 'type' => 'stock_in',
                 'quantity' => (int) $request->quantity,
                 'before_stock' => $before,
@@ -214,6 +248,7 @@ class InventoryController extends Controller
 
             StockMovement::create([
                 'product_id' => $product->id,
+                'department_id' => $product->department_id,
                 'branch_id' => auth()->user()->branch_id,
                 'user_id' => auth()->id(),
                 'type' => 'STOCK_IN',
@@ -241,6 +276,11 @@ class InventoryController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail();
 
+                app(DepartmentAccessService::class)->authorize(
+                    $request->user(),
+                    $product->department_id
+                );
+
                 if ($product->stock < (int) $request->quantity) {
                     throw new \Exception('Not enough stock to mark as damaged.');
                 }
@@ -251,6 +291,7 @@ class InventoryController extends Controller
 
                 Stock::create([
                     'product_id' => $product->id,
+                    'department_id' => $product->department_id,
                     'type' => 'damage',
                     'quantity' => (int) $request->quantity,
                     'before_stock' => $before,
@@ -261,6 +302,7 @@ class InventoryController extends Controller
 
                 StockMovement::create([
                     'product_id' => $product->id,
+                    'department_id' => $product->department_id,
                     'branch_id' => auth()->user()->branch_id,
                     'user_id' => auth()->id(),
                     'type' => 'DAMAGE',

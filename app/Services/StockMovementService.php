@@ -79,6 +79,8 @@ class StockMovementService
 
             'product_id' => $product->id,
 
+            'department_id' => $product->department_id,
+
             'branch_id' =>
                 auth()->user()->branch_id
                 ?? null,

@@ -16,7 +16,16 @@ class AdminOrManager
 
         if (
             !$user
-            || !$user->hasOperationalRole('ADMIN', 'MANAGER', 'ADMINISTRATOR')
+            || !$user->hasOperationalRole(
+                'ADMIN',
+                'MANAGER',
+                'ADMINISTRATOR',
+                'KITCHEN_MANAGER',
+                'KITCHEN_CHIEF',
+                'BAR_MANAGER',
+                'BAR_CHIEF',
+                'BARTENDER'
+            )
         ) {
 
             abort(403);

@@ -21,6 +21,8 @@ class Category extends Model
         'name',
         'description',
 
+        'department_id',
+
         'sort_order',
 
         'active',
@@ -50,6 +52,13 @@ class Category extends Model
     {
         return $this->hasMany(
             Product::class
+        );
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(
+            Department::class
         );
     }
 
