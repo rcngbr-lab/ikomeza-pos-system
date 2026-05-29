@@ -37,7 +37,7 @@ class UserSeeder extends Seeder
         ])->save();
 
         $email = $this->envValue('ADMIN_EMAIL', 'admin@agnesbar.com');
-        $password = $this->envValue('ADMIN_PASSWORD', 'MyStrongPassword123');
+        $password = $this->adminPassword();
         $name = $this->envValue('ADMIN_NAME', 'Administrator');
 
         $user = User::whereRaw('LOWER(email) = ?', [strtolower($email)])
@@ -74,5 +74,19 @@ class UserSeeder extends Seeder
         $value = trim($value);
 
         return $value !== '' ? $value : $default;
+    }
+
+    private function adminPassword(): string
+    {
+        $password = $this->envValue('ADMIN_PASSWORD', 'MyStrongPassword123');
+        $placeholderPasswords = [
+            'password',
+            'change-this-password',
+            'changeme',
+        ];
+
+        return in_array(strtolower($password), $placeholderPasswords, true)
+            ? 'MyStrongPassword123'
+            : $password;
     }
 }
