@@ -8,15 +8,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('sale_items', function (Blueprint $table) {
+        if (!Schema::hasColumn('sale_items', 'subtotal')) {
+            Schema::table('sale_items', function (Blueprint $table) {
 
-            $table->decimal(
-                'subtotal',
-                12,
-                2
-            )->default(0);
+                $table->decimal(
+                    'subtotal',
+                    12,
+                    2
+                )->default(0);
 
-        });
+            });
+        }
     }
 
     public function down(): void

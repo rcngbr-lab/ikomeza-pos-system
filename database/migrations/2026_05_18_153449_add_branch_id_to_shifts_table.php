@@ -8,17 +8,19 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('shifts', function (Blueprint $table) {
+        if (!Schema::hasColumn('shifts', 'branch_id')) {
+            Schema::table('shifts', function (Blueprint $table) {
 
-            $table->unsignedBigInteger(
-                'branch_id'
-            )
+                $table->unsignedBigInteger(
+                    'branch_id'
+                )
 
-            ->nullable()
+                ->nullable()
 
-            ->after('user_id');
+                ->after('user_id');
 
-        });
+            });
+        }
     }
 
     public function down(): void

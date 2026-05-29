@@ -9,4 +9,4 @@ cmds = [
 ]
 
 [start]
-cmd = "php artisan config:clear && php artisan view:clear && php artisan migrate --force && php -d variables_order=EGPCS artisan serve --host=0.0.0.0 --port=${PORT:-8080}"
+cmd = "mkdir -p database && touch database/database.sqlite && php artisan config:clear && php artisan view:clear && php artisan migrate --force && php artisan db:seed --force && php -d variables_order=EGPCS artisan serve --host=0.0.0.0 --port=${PORT:-8080}"

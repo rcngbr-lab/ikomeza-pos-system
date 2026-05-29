@@ -136,7 +136,10 @@ class PermissionSeeder extends Seeder
 
             Permission::updateOrCreate(
                 ['code' => $permission['code']],
-                $permission
+                array_merge($permission, [
+                    'guard_name' => 'web',
+                    'active' => true,
+                ])
             );
         }
     }

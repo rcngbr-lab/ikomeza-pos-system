@@ -2,71 +2,25 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Spatie\Permission\Models\Permission as SpatiePermission;
 
-class Permission extends Model
+class Permission extends SpatiePermission
 {
-    use HasFactory;
-
-    /*
-    |--------------------------------------------------------------------------
-    | MASS ASSIGNABLE
-    |--------------------------------------------------------------------------
-    */
-
     protected $fillable = [
-
-    'module',
-
-    'name',
-
-    'code',
-
-    'description',
-
-    'active',
-];
-
-    /*
-    |--------------------------------------------------------------------------
-    | ATTRIBUTE CASTS
-    |--------------------------------------------------------------------------
-    */
+        'module',
+        'name',
+        'guard_name',
+        'code',
+        'description',
+        'active',
+    ];
 
     protected $casts = [
-
         'active' => 'boolean',
     ];
 
-    /*
-    |--------------------------------------------------------------------------
-    | RELATIONSHIPS
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * Roles having permission
-     */
-    public function roles()
-    {
-        return $this->belongsToMany(
-            Role::class,
-            'permission_role'
-        )->withTimestamps();
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | BUSINESS METHODS
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * Check active permission
-     */
     public function isActive(): bool
     {
-        return $this->active;
+        return (bool) $this->active;
     }
 }
