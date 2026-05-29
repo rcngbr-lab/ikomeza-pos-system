@@ -62,6 +62,9 @@ return new class extends Migration
                 ]
             )->default('COMPLETED');
 
+            $table->timestamp('refunded_at')
+                ->nullable();
+
             $table->timestamps();
         });
     }

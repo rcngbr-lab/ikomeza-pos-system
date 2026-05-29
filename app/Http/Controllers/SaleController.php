@@ -12,6 +12,7 @@ use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Services\DepartmentAccessService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 use App\Services\SaleService;
 class SaleController extends Controller
@@ -261,7 +262,7 @@ public function refund(Request $request, $id)
 
     $sale = Sale::with('items.department')->findOrFail($id);
 
-    if ($sale->is_refunded) {
+    if ((bool) $sale->is_refunded || $sale->sale_status === 'REFUNDED') {
 
         return back()->with(
             'error',
@@ -271,89 +272,109 @@ public function refund(Request $request, $id)
 
     $restoredUnits = 0;
 
-    DB::transaction(function () use ($sale, $request, &$restoredUnits) {
-        $refund = Refund::create([
+    try {
+        DB::transaction(function () use ($sale, $request, &$restoredUnits) {
+            $refund = Refund::create($this->onlyExistingColumns('refunds', [
 
-            'sale_id' => $sale->id,
+                'sale_id' => $sale->id,
 
-            'user_id' => auth()->id(),
+                'user_id' => auth()->id(),
 
-            'amount' => $sale->grand_total,
+                'amount' => $sale->grand_total,
 
-            'reason' => $request->refund_reason,
+                'reason' => $request->refund_reason,
 
-            'status' => 'COMPLETED',
+                'status' => Refund::STATUS_COMPLETED,
+
+                'refunded_at' => now(),
+
+            ]));
+
+        foreach ($sale->items as $item) {
+
+            $product = Product::whereKey($item->product_id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($product) {
+
+                $before = $product->stock;
+
+                $product->increment(
+                    'stock',
+                    $item->quantity
+                );
+
+                $product->refresh();
+                $restoredUnits += (int) $item->quantity;
+
+                Stock::create($this->onlyExistingColumns('stocks', [
+                    'product_id' => $product->id,
+                    'department_id' => $product->department_id ?: $item->department_id,
+                    'type' => 'refund',
+                    'quantity' => $item->quantity,
+                    'before_stock' => $before,
+                    'after_stock' => $product->stock,
+                    'note' => 'Refund for ' . $sale->receipt_no,
+                    'user_id' => auth()->id(),
+                ]));
+
+                StockMovement::create($this->onlyExistingColumns('stock_movements', [
+                    'product_id' => $product->id,
+                    'department_id' => $product->department_id ?: $item->department_id,
+                    'branch_id' => auth()->user()->branch_id,
+                    'user_id' => auth()->id(),
+                    'type' => 'REFUND',
+                    'quantity' => $item->quantity,
+                    'before_stock' => $before,
+                    'after_stock' => $product->stock,
+                    'reference_type' => Refund::class,
+                    'reference_id' => $refund->id,
+                    'reason' => trim('Refund for ' . $sale->receipt_no . ' ' . ($request->refund_reason ?? '')),
+                ]));
+            }
+        }
+
+        $sale->update($this->onlyExistingColumns('sales', [
+
+            'is_refunded' => true,
+
+            'refund_amount' => $sale->grand_total,
+
+            'refund_reason' => $request->refund_reason,
 
             'refunded_at' => now(),
 
-        ]);
+            'refunded_by' => auth()->id(),
 
-    foreach ($sale->items as $item) {
+            'sale_status' => 'REFUNDED',
 
-        $product = Product::whereKey($item->product_id)
-            ->lockForUpdate()
-            ->first();
+        ]));
+        });
+    } catch (\Throwable $exception) {
+        report($exception);
 
-        if ($product) {
-
-            $before = $product->stock;
-
-            $product->increment(
-                'stock',
-                $item->quantity
-            );
-
-            $product->refresh();
-            $restoredUnits += (int) $item->quantity;
-
-            Stock::create([
-                'product_id' => $product->id,
-                'department_id' => $product->department_id ?: $item->department_id,
-                'type' => 'refund',
-                'quantity' => $item->quantity,
-                'before_stock' => $before,
-                'after_stock' => $product->stock,
-                'note' => 'Refund for ' . $sale->receipt_no,
-                'user_id' => auth()->id(),
-            ]);
-
-            StockMovement::create([
-                'product_id' => $product->id,
-                'department_id' => $product->department_id ?: $item->department_id,
-                'branch_id' => auth()->user()->branch_id,
-                'user_id' => auth()->id(),
-                'type' => 'REFUND',
-                'quantity' => $item->quantity,
-                'before_stock' => $before,
-                'after_stock' => $product->stock,
-                'reference_type' => Refund::class,
-                'reference_id' => $refund->id,
-                'reason' => trim('Refund for ' . $sale->receipt_no . ' ' . ($request->refund_reason ?? '')),
-            ]);
-        }
+        return back()->with(
+            'error',
+            'Refund failed. No database data was deleted. Please try again after the latest update finishes deploying.'
+        );
     }
-
-    $sale->update([
-
-        'is_refunded' => true,
-
-        'refund_amount' => $sale->grand_total,
-
-        'refund_reason' => $request->refund_reason,
-
-        'refunded_at' => now(),
-
-        'refunded_by' => auth()->id(),
-
-        'sale_status' => 'REFUNDED',
-
-    ]);
-    });
 
     return back()->with(
         'success',
         'Sale refunded successfully. ' . number_format($restoredUnits) . ' stock units restored.'
     );
+}
+
+private function onlyExistingColumns(string $table, array $data): array
+{
+    if (!Schema::hasTable($table)) {
+        return [];
+    }
+
+    return collect($data)
+        ->filter(fn ($value, $column) => Schema::hasColumn($table, $column))
+        ->all();
 }
 
 
