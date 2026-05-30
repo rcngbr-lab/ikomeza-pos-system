@@ -2,7 +2,20 @@
     $user = auth()->user();
 
     $canSell = $user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER', 'CASHIER', 'WAITER', 'SERVER');
-    $canShift = $user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER', 'CASHIER', 'WAITER', 'SERVER');
+    $canShift = $user->hasOperationalRole(
+        'ADMIN',
+        'ADMINISTRATOR',
+        'MANAGER',
+        'STORE_KEEPER',
+        'KITCHEN_MANAGER',
+        'KITCHEN_CHIEF',
+        'BAR_MANAGER',
+        'BAR_CHIEF',
+        'BARTENDER',
+        'CASHIER',
+        'WAITER',
+        'SERVER'
+    );
     $canViewSales = $user->hasOperationalRole(
         'ADMIN',
         'ADMINISTRATOR',

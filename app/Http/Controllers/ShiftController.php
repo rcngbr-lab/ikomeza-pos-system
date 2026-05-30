@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Sale;
 use App\Models\Shift;
+use App\Models\User;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 
@@ -147,31 +148,53 @@ class ShiftController extends Controller
             ->with('success', 'Shift closed successfully.');
     }
 
-    public function history()
+    public function history(Request $request)
     {
-        $query = Shift::with('user')->latest();
+        $canReviewAll = $this->canReviewAllShifts($request->user());
+        $query = $this->shiftHistoryQuery($request, $canReviewAll);
+        $summaryQuery = clone $query;
 
-        if (auth()->user()->hasOperationalRole('CASHIER')) {
-            $query->where('user_id', auth()->id());
-        }
+        $summary = $this->shiftSummary($summaryQuery);
+        $users = $canReviewAll
+            ? User::query()->orderBy('name')->get(['id', 'name', 'email', 'role'])
+            : collect();
 
         return view('shifts.history', [
-            'shifts' => $query->paginate(20),
+            'shifts' => $query->paginate((int) $request->input('per_page', 20))->withQueryString(),
+            'summary' => $summary,
+            'users' => $users,
+            'canReviewAll' => $canReviewAll,
+            'periodLabel' => $this->shiftPeriodLabel($request),
         ]);
     }
 
     public function print(Shift $shift)
     {
         if (
-            auth()->user()->hasOperationalRole('CASHIER')
+            !$this->canReviewAllShifts(auth()->user())
             && $shift->user_id !== auth()->id()
         ) {
             abort(403);
         }
 
-        $shift->load('user');
+        $shift->load('user', 'branch');
 
         return view('shifts.print', compact('shift'));
+    }
+
+    public function printHistory(Request $request)
+    {
+        $canReviewAll = $this->canReviewAllShifts($request->user());
+        $query = $this->shiftHistoryQuery($request, $canReviewAll);
+        $summary = $this->shiftSummary(clone $query);
+        $shifts = $query->get();
+
+        return view('shifts.print-history', [
+            'shifts' => $shifts,
+            'summary' => $summary,
+            'periodLabel' => $this->shiftPeriodLabel($request),
+            'canReviewAll' => $canReviewAll,
+        ]);
     }
 
     private function activeShift(): ?Shift
@@ -183,6 +206,102 @@ class ShiftController extends Controller
             })
             ->latest()
             ->first();
+    }
+
+    private function shiftHistoryQuery(Request $request, bool $canReviewAll)
+    {
+        $query = Shift::with('user', 'branch')
+            ->latest('opened_at')
+            ->latest('id');
+
+        if (!$canReviewAll) {
+            $query->where('user_id', $request->user()->id);
+        } elseif ($request->filled('user_id')) {
+            $query->where('user_id', $request->integer('user_id'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', strtoupper((string) $request->status));
+        }
+
+        if ($request->filled('search')) {
+            $search = trim((string) $request->search);
+
+            $query->where(function ($shift) use ($search) {
+                $shift->where('shift_code', 'like', '%' . $search . '%')
+                    ->orWhere('id', $search)
+                    ->orWhereHas('user', function ($user) use ($search) {
+                        $user->where('name', 'like', '%' . $search . '%')
+                            ->orWhere('email', 'like', '%' . $search . '%');
+                    });
+            });
+        }
+
+        $this->applyShiftDateFilter($query, $request);
+
+        return $query;
+    }
+
+    private function applyShiftDateFilter($query, Request $request): void
+    {
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('opened_at', [
+                $request->start_date . ' 00:00:00',
+                $request->end_date . ' 23:59:59',
+            ]);
+
+            return;
+        }
+
+        match ($request->input('filter')) {
+            'today' => $query->whereDate('opened_at', today()),
+            'yesterday' => $query->whereDate('opened_at', today()->subDay()),
+            'week' => $query->whereBetween('opened_at', [now()->startOfWeek(), now()->endOfWeek()]),
+            'last_week' => $query->whereBetween('opened_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()]),
+            'month' => $query->whereMonth('opened_at', now()->month)->whereYear('opened_at', now()->year),
+            'last_month' => $query->whereMonth('opened_at', now()->subMonth()->month)->whereYear('opened_at', now()->subMonth()->year),
+            'year' => $query->whereYear('opened_at', now()->year),
+            default => null,
+        };
+    }
+
+    private function shiftSummary($query): array
+    {
+        return [
+            'count' => (clone $query)->count(),
+            'open' => (clone $query)->where('status', 'OPEN')->count(),
+            'closed' => (clone $query)->where('status', 'CLOSED')->count(),
+            'sales' => (clone $query)->sum('total_sales'),
+            'cash' => (clone $query)->sum('cash_sales'),
+            'expected' => (clone $query)->sum('expected_cash'),
+            'closing' => (clone $query)->sum('closing_cash'),
+            'difference' => (clone $query)->sum('difference'),
+            'shortage' => abs((clone $query)->where('difference', '<', 0)->sum('difference')),
+            'overage' => (clone $query)->where('difference', '>', 0)->sum('difference'),
+        ];
+    }
+
+    private function shiftPeriodLabel(Request $request): string
+    {
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            return $request->start_date . ' to ' . $request->end_date;
+        }
+
+        return match ($request->input('filter')) {
+            'today' => 'Today',
+            'yesterday' => 'Yesterday',
+            'week' => 'This Week',
+            'last_week' => 'Last Week',
+            'month' => 'This Month',
+            'last_month' => 'Last Month',
+            'year' => 'This Year',
+            default => 'All Time',
+        };
+    }
+
+    private function canReviewAllShifts($user): bool
+    {
+        return $user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER');
     }
 
     private function paymentTotals(Shift $shift): array

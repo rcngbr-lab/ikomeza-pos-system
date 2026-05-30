@@ -379,37 +379,43 @@ Route::middleware([
         '/shifts/open',
         [ShiftController::class, 'openForm']
     )->name('shifts.open.form')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER,CASHIER,WAITER,SERVER');
 
     Route::post(
         '/shifts/open',
         [ShiftController::class, 'open']
     )->name('shifts.open')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER,CASHIER,WAITER,SERVER');
 
     Route::get(
         '/shifts/current',
         [ShiftController::class, 'current']
     )->name('shifts.current')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER,CASHIER,WAITER,SERVER');
 
     Route::post(
         '/shifts/close',
         [ShiftController::class, 'close']
     )->name('shifts.close')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER,CASHIER,WAITER,SERVER');
 
     Route::get(
         '/shifts/history',
         [ShiftController::class, 'history']
     )->name('shifts.history')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER,CASHIER,WAITER,SERVER');
+
+    Route::get(
+        '/shifts/history/print',
+        [ShiftController::class, 'printHistory']
+    )->name('shifts.history.print')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER,CASHIER,WAITER,SERVER');
 
     Route::get(
         '/shifts/{shift}/print',
         [ShiftController::class, 'print']
     )->name('shifts.print')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER,CASHIER,WAITER,SERVER');
 
     /*
     |--------------------------------------------------------------------------
