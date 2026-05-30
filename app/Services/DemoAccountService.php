@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Branch;
+use App\Models\Department;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -25,6 +26,10 @@ class DemoAccountService
 
         $roles = $this->ensureRoles();
         $branch = $this->ensureBranch();
+        $departmentIds = [
+            'KITCHEN' => Department::where('code', 'KITCHEN')->value('id'),
+            'BAR' => Department::where('code', 'BAR')->value('id'),
+        ];
 
         foreach ($this->demoUsers() as $demoUser) {
             if (!isset($roles[$demoUser['role']])) {
@@ -42,7 +47,7 @@ class DemoAccountService
                     'role' => $role->code ?? $demoUser['role'],
                     'role_id' => $role->id,
                     'branch_id' => $branch->id,
-                    'department_id' => null,
+                    'department_id' => $departmentIds[$demoUser['department'] ?? ''] ?? null,
                     'status' => 'ACTIVE',
                     'active' => true,
                 ]
@@ -125,6 +130,23 @@ class DemoAccountService
                 'name' => 'Demo Waiter',
                 'email' => 'waiter@agnesbar.com',
                 'role' => 'WAITER',
+            ],
+            [
+                'name' => 'Demo Store Keeper',
+                'email' => 'storekeeper@agnesbar.com',
+                'role' => 'STORE_KEEPER',
+            ],
+            [
+                'name' => 'Demo Kitchen Chief',
+                'email' => 'kitchen@agnesbar.com',
+                'role' => 'KITCHEN_CHIEF',
+                'department' => 'KITCHEN',
+            ],
+            [
+                'name' => 'Demo Bar Chief',
+                'email' => 'bar@agnesbar.com',
+                'role' => 'BAR_CHIEF',
+                'department' => 'BAR',
             ],
         ];
     }

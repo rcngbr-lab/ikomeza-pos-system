@@ -43,6 +43,21 @@ class Department extends Model
         return $this->hasMany(StockMovement::class);
     }
 
+    public function stores()
+    {
+        return $this->hasMany(Store::class);
+    }
+
+    public function purchases()
+    {
+        return $this->hasMany(Purchase::class);
+    }
+
+    public function suppliers()
+    {
+        return $this->hasMany(Supplier::class);
+    }
+
     public function users()
     {
         return $this->hasMany(User::class);

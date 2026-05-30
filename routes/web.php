@@ -21,6 +21,7 @@ use App\Http\Controllers\RefundController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\StockRequisitionController;
+use App\Http\Controllers\StoreManagementController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\InventoryController;
 
@@ -247,6 +248,35 @@ Route::middleware([
         [InventoryController::class, 'printHistory']
     )->name('inventory.print')
     ->middleware('admin.manager');
+
+    /*
+    |--------------------------------------------------------------------------
+    | STORE MANAGEMENT
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('store')
+        ->name('store.')
+        ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER')
+        ->group(function () {
+            Route::get('/', [StoreManagementController::class, 'dashboard'])->name('dashboard');
+            Route::get('/suppliers', [StoreManagementController::class, 'suppliers'])->name('suppliers');
+            Route::post('/suppliers', [StoreManagementController::class, 'storeSupplier'])->name('suppliers.store');
+            Route::get('/purchases', [StoreManagementController::class, 'purchases'])->name('purchases');
+            Route::post('/purchases', [StoreManagementController::class, 'storePurchase'])->name('purchases.store');
+            Route::post('/purchases/{purchase}/approve', [StoreManagementController::class, 'approvePurchase'])->name('purchases.approve');
+            Route::post('/purchases/{purchase}/receive', [StoreManagementController::class, 'receivePurchase'])->name('purchases.receive');
+            Route::get('/issues', [StoreManagementController::class, 'issues'])->name('issues');
+            Route::post('/issues', [StoreManagementController::class, 'storeIssue'])->name('issues.store');
+            Route::post('/issues/{issue}/approve', [StoreManagementController::class, 'approveIssue'])->name('issues.approve');
+            Route::get('/damages', [StoreManagementController::class, 'damages'])->name('damages');
+            Route::post('/damages', [StoreManagementController::class, 'storeDamage'])->name('damages.store');
+            Route::post('/damages/{damage}/approve', [StoreManagementController::class, 'approveDamage'])->name('damages.approve');
+            Route::get('/returns', [StoreManagementController::class, 'returns'])->name('returns');
+            Route::post('/returns', [StoreManagementController::class, 'storeReturn'])->name('returns.store');
+            Route::post('/returns/{return}/approve', [StoreManagementController::class, 'approveReturn'])->name('returns.approve');
+            Route::get('/movements', [StoreManagementController::class, 'movements'])->name('movements');
+        });
 
     /*
     |--------------------------------------------------------------------------

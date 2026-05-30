@@ -300,6 +300,50 @@
 
                 </div>
 
+                <!-- DEFAULT STORE -->
+
+                <div>
+
+                    <label class="block text-sm font-bold text-slate-700 mb-2">
+                        Default Store
+                    </label>
+
+                    <select
+                        name="default_store_id"
+                        class="w-full border border-slate-300 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="">Auto-select by department</option>
+                        @foreach($stores as $store)
+                            <option value="{{ $store->id }}" @selected(old('default_store_id') == $store->id)>
+                                {{ $store->name }}
+                            </option>
+                        @endforeach
+                    </select>
+
+                </div>
+
+                <!-- SUPPLIER -->
+
+                <div>
+
+                    <label class="block text-sm font-bold text-slate-700 mb-2">
+                        Supplier
+                    </label>
+
+                    <select
+                        name="supplier_id"
+                        class="w-full border border-slate-300 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="">No supplier selected</option>
+                        @foreach($suppliers as $supplier)
+                            <option value="{{ $supplier->id }}" @selected(old('supplier_id') == $supplier->id)>
+                                {{ $supplier->company_name }}
+                            </option>
+                        @endforeach
+                    </select>
+
+                </div>
+
                 <!-- COST PRICE -->
 
                 <div>

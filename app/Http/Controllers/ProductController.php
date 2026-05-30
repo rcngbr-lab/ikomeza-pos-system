@@ -8,8 +8,12 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\StockMovement;
 use App\Models\Stock;
+use App\Models\Store;
+use App\Models\StoreStock;
+use App\Models\Supplier;
 use App\Services\CategoryCatalogService;
 use App\Services\DepartmentAccessService;
+use App\Services\StoreStockService;
 use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
@@ -68,11 +72,19 @@ class ProductController extends Controller
 
             ->get();
 
+        $stores = Store::where('active', true)
+            ->orderBy('sort_order')
+            ->get();
+
+        $suppliers = Supplier::where('status', Supplier::STATUS_ACTIVE)
+            ->orderBy('company_name')
+            ->get();
+
         return view(
 
             'products.create',
 
-            compact('categories', 'departments')
+            compact('categories', 'departments', 'stores', 'suppliers')
 
         );
     }
@@ -102,6 +114,14 @@ class ProductController extends Controller
             'department_id' =>
 
                 'required|exists:departments,id',
+
+            'default_store_id' =>
+
+                'nullable|exists:stores,id',
+
+            'supplier_id' =>
+
+                'nullable|exists:suppliers,id',
 
             'buy_price' =>
 
@@ -139,7 +159,7 @@ class ProductController extends Controller
             (int) $request->department_id
         );
 
-        Product::create([
+        $product = Product::create([
 
             'product_code' =>
 
@@ -164,6 +184,14 @@ class ProductController extends Controller
             'department_id' =>
 
                 $request->department_id,
+
+            'default_store_id' =>
+
+                $request->default_store_id,
+
+            'supplier_id' =>
+
+                $request->supplier_id,
 
             'product_type' =>
 
@@ -197,7 +225,35 @@ class ProductController extends Controller
 
                 true,
 
+            'status' =>
+
+                'ACTIVE',
+
         ]);
+
+        if (!$product->default_store_id) {
+            $store = app(StoreStockService::class)->defaultStoreFor($product->load('department'));
+
+            if ($store) {
+                $product->update(['default_store_id' => $store->id]);
+            }
+        }
+
+        if ($product->track_stock && $product->default_store_id) {
+            StoreStock::updateOrCreate(
+                [
+                    'store_id' => $product->default_store_id,
+                    'product_id' => $product->id,
+                ],
+                [
+                    'department_id' => $product->department_id,
+                    'quantity' => $product->stock,
+                    'alert_stock' => $product->alert_stock ?: 0,
+                    'unit_cost' => $product->buy_price ?: 0,
+                    'total_value' => (float) $product->stock * (float) $product->buy_price,
+                ]
+            );
+        }
 
         return redirect()
 
@@ -252,6 +308,14 @@ class ProductController extends Controller
 
             ->get();
 
+        $stores = Store::where('active', true)
+            ->orderBy('sort_order')
+            ->get();
+
+        $suppliers = Supplier::where('status', Supplier::STATUS_ACTIVE)
+            ->orderBy('company_name')
+            ->get();
+
         return view(
 
             'products.edit',
@@ -260,7 +324,9 @@ class ProductController extends Controller
 
                 'product',
                 'categories',
-                'departments'
+                'departments',
+                'stores',
+                'suppliers'
 
             )
 
@@ -300,6 +366,14 @@ class ProductController extends Controller
             'department_id' =>
 
                 'required|exists:departments,id',
+
+            'default_store_id' =>
+
+                'nullable|exists:stores,id',
+
+            'supplier_id' =>
+
+                'nullable|exists:suppliers,id',
 
             'buy_price' =>
 
@@ -359,6 +433,14 @@ class ProductController extends Controller
 
                 $request->department_id,
 
+            'default_store_id' =>
+
+                $request->default_store_id ?: $product->default_store_id,
+
+            'supplier_id' =>
+
+                $request->supplier_id,
+
             'product_type' =>
 
                 $request->input('product_type', $product->product_type ?: 'FINISHED_PRODUCT'),
@@ -387,7 +469,27 @@ class ProductController extends Controller
 
                 $request->has('active'),
 
+            'status' =>
+
+                $request->has('active') ? 'ACTIVE' : 'INACTIVE',
+
         ]);
+
+        if ($product->track_stock && $product->default_store_id) {
+            StoreStock::updateOrCreate(
+                [
+                    'store_id' => $product->default_store_id,
+                    'product_id' => $product->id,
+                ],
+                [
+                    'department_id' => $product->department_id,
+                    'quantity' => $product->stock,
+                    'alert_stock' => $product->alert_stock ?: 0,
+                    'unit_cost' => $product->buy_price ?: 0,
+                    'total_value' => (float) $product->stock * (float) $product->buy_price,
+                ]
+            );
+        }
 
         return redirect()
 
@@ -505,6 +607,16 @@ class ProductController extends Controller
 
         ]);
 
+        $storeStockService = app(StoreStockService::class);
+        $store = $storeStockService->defaultStoreFor($product->load('department'));
+        $storeSnapshot = null;
+
+        if ($store) {
+            $storeSnapshot = $request->type === 'ADD'
+                ? $storeStockService->increaseStoreOnly($product, $store, (float) $request->quantity, (float) ($product->buy_price ?? 0))
+                : $storeStockService->decreaseStoreOnly($product, $store, (float) $request->quantity, (float) ($product->buy_price ?? 0));
+        }
+
         /*
         |--------------------------------------------------------------------------
         | STOCK MOVEMENT LOG
@@ -525,9 +637,21 @@ class ProductController extends Controller
 
                 auth()->id(),
 
+            'from_store_id' =>
+
+                $request->type === 'ADD' ? null : $store?->id,
+
+            'to_store_id' =>
+
+                $request->type === 'ADD' ? $store?->id : null,
+
             'type' =>
 
                 $request->type,
+
+            'movement_type' =>
+
+                $request->type === 'ADD' ? 'STOCK_ADJUSTMENT_IN' : 'STOCK_ADJUSTMENT_OUT',
 
             'quantity' =>
 
@@ -541,7 +665,35 @@ class ProductController extends Controller
 
                 $after,
 
+            'quantity_before' =>
+
+                $storeSnapshot['before'] ?? $before,
+
+            'quantity_changed' =>
+
+                $request->type === 'ADD' ? abs((float) $request->quantity) : -abs((float) $request->quantity),
+
+            'quantity_after' =>
+
+                $storeSnapshot['after'] ?? $after,
+
+            'unit_cost' =>
+
+                $product->buy_price ?? 0,
+
+            'total_cost' =>
+
+                ($product->buy_price ?? 0) * (float) $request->quantity,
+
+            'performed_by' =>
+
+                auth()->id(),
+
             'reason' =>
+
+                $request->reason,
+
+            'notes' =>
 
                 $request->reason,
 

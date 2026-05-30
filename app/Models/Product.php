@@ -20,6 +20,10 @@ class Product extends Model
 
         'department_id',
 
+        'default_store_id',
+
+        'supplier_id',
+
         'product_type',
 
         'buy_price',
@@ -35,6 +39,8 @@ class Product extends Model
         'unit',
 
         'active',
+
+        'status',
 
     ];
 
@@ -71,6 +77,28 @@ class Product extends Model
     {
         return $this->belongsTo(
             Department::class
+        );
+    }
+
+    public function defaultStore()
+    {
+        return $this->belongsTo(
+            Store::class,
+            'default_store_id'
+        );
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(
+            Supplier::class
+        );
+    }
+
+    public function storeStocks()
+    {
+        return $this->hasMany(
+            StoreStock::class
         );
     }
 

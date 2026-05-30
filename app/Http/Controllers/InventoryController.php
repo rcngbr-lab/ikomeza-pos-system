@@ -9,6 +9,7 @@ use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Services\CategoryCatalogService;
 use App\Services\DepartmentAccessService;
+use App\Services\StoreStockService;
 use Illuminate\Support\Facades\DB;
 
 class InventoryController extends Controller
@@ -264,6 +265,19 @@ class InventoryController extends Controller
             $product->increment('stock', (int) $request->quantity);
             $product->refresh();
 
+            $storeStockService = app(StoreStockService::class);
+            $store = $storeStockService->defaultStoreFor($product);
+            $storeSnapshot = null;
+
+            if ($store) {
+                $storeSnapshot = $storeStockService->increaseStoreOnly(
+                    $product,
+                    $store,
+                    (float) $request->quantity,
+                    (float) ($product->buy_price ?? 0)
+                );
+            }
+
             Stock::create([
                 'product_id' => $product->id,
                 'department_id' => $product->department_id,
@@ -280,11 +294,20 @@ class InventoryController extends Controller
                 'department_id' => $product->department_id,
                 'branch_id' => auth()->user()->branch_id,
                 'user_id' => auth()->id(),
+                'to_store_id' => $store?->id,
                 'type' => 'STOCK_IN',
+                'movement_type' => 'STOCK_IN',
                 'quantity' => (int) $request->quantity,
                 'before_stock' => $before,
                 'after_stock' => $product->stock,
+                'quantity_before' => $storeSnapshot['before'] ?? $before,
+                'quantity_changed' => abs((float) $request->quantity),
+                'quantity_after' => $storeSnapshot['after'] ?? $product->stock,
+                'unit_cost' => $product->buy_price ?? 0,
+                'total_cost' => ($product->buy_price ?? 0) * (float) $request->quantity,
+                'performed_by' => auth()->id(),
                 'reason' => $request->note ?: 'Manual stock in',
+                'notes' => $request->note ?: 'Manual stock in',
             ]);
         });
 
@@ -318,6 +341,19 @@ class InventoryController extends Controller
                 $product->decrement('stock', (int) $request->quantity);
                 $product->refresh();
 
+                $storeStockService = app(StoreStockService::class);
+                $store = $storeStockService->defaultStoreFor($product);
+                $storeSnapshot = null;
+
+                if ($store) {
+                    $storeSnapshot = $storeStockService->decreaseStoreOnly(
+                        $product,
+                        $store,
+                        (float) $request->quantity,
+                        (float) ($product->buy_price ?? 0)
+                    );
+                }
+
                 Stock::create([
                     'product_id' => $product->id,
                     'department_id' => $product->department_id,
@@ -334,11 +370,20 @@ class InventoryController extends Controller
                     'department_id' => $product->department_id,
                     'branch_id' => auth()->user()->branch_id,
                     'user_id' => auth()->id(),
+                    'from_store_id' => $store?->id,
                     'type' => 'DAMAGE',
+                    'movement_type' => 'DAMAGE',
                     'quantity' => (int) $request->quantity,
                     'before_stock' => $before,
                     'after_stock' => $product->stock,
+                    'quantity_before' => $storeSnapshot['before'] ?? $before,
+                    'quantity_changed' => -abs((float) $request->quantity),
+                    'quantity_after' => $storeSnapshot['after'] ?? $product->stock,
+                    'unit_cost' => $product->buy_price ?? 0,
+                    'total_cost' => ($product->buy_price ?? 0) * (float) $request->quantity,
+                    'performed_by' => auth()->id(),
                     'reason' => $request->note ?: 'Damaged product',
+                    'notes' => $request->note ?: 'Damaged product',
                 ]);
             });
         } catch (\Throwable $exception) {

@@ -11,6 +11,7 @@ use App\Models\Refund;
 use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Services\DepartmentAccessService;
+use App\Services\StoreStockService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -326,6 +327,19 @@ public function refund(Request $request, $id)
                 $product->refresh();
                 $restoredUnits += (int) $item->quantity;
 
+                $storeStockService = app(StoreStockService::class);
+                $store = $storeStockService->defaultStoreFor($product);
+                $storeSnapshot = null;
+
+                if ($store) {
+                    $storeSnapshot = $storeStockService->increaseStoreOnly(
+                        $product,
+                        $store,
+                        (float) $item->quantity,
+                        (float) ($product->buy_price ?? 0)
+                    );
+                }
+
                 Stock::create($this->onlyExistingColumns('stocks', [
                     'product_id' => $product->id,
                     'department_id' => $product->department_id ?: $item->department_id,
@@ -342,13 +356,22 @@ public function refund(Request $request, $id)
                     'department_id' => $product->department_id ?: $item->department_id,
                     'branch_id' => auth()->user()->branch_id,
                     'user_id' => auth()->id(),
+                    'to_store_id' => $store?->id,
                     'type' => 'REFUND',
+                    'movement_type' => 'REFUND',
                     'quantity' => $item->quantity,
                     'before_stock' => $before,
                     'after_stock' => $product->stock,
+                    'quantity_before' => $storeSnapshot['before'] ?? $before,
+                    'quantity_changed' => abs((float) $item->quantity),
+                    'quantity_after' => $storeSnapshot['after'] ?? $product->stock,
+                    'unit_cost' => $product->buy_price ?? 0,
+                    'total_cost' => ($product->buy_price ?? 0) * (float) $item->quantity,
+                    'performed_by' => auth()->id(),
                     'reference_type' => Refund::class,
                     'reference_id' => $refund->id,
                     'reason' => trim('Refund for ' . $sale->receipt_no . ' ' . ($request->refund_reason ?? '')),
+                    'notes' => trim('Refund for ' . $sale->receipt_no . ' ' . ($request->refund_reason ?? '')),
                 ]));
             }
         }

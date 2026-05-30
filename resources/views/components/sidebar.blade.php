@@ -80,6 +80,7 @@
 
     if ($canOperate) {
         $links = array_merge($links, [
+            ['label' => 'Store Control', 'route' => 'store.dashboard', 'active' => 'store.*', 'mark' => 'ST'],
             ['label' => 'Inventory', 'route' => 'inventory.index', 'mark' => 'IN'],
             ['label' => 'Products', 'route' => 'products.index', 'active' => 'products.*', 'mark' => 'PR'],
             ['label' => 'Categories', 'route' => 'categories.index', 'active' => 'categories.*', 'mark' => 'CT'],

@@ -111,6 +111,19 @@ class SaleService
                     $product->decrement('stock', $quantity);
                     $product->refresh();
 
+                    $storeStockService = app(StoreStockService::class);
+                    $store = $storeStockService->defaultStoreFor($product);
+                    $storeSnapshot = null;
+
+                    if ($store) {
+                        $storeSnapshot = $storeStockService->decreaseStoreOnly(
+                            $product,
+                            $store,
+                            $quantity,
+                            (float) ($product->buy_price ?? 0)
+                        );
+                    }
+
                     Stock::create([
                         'product_id' => $product->id,
                         'department_id' => $product->department_id,
@@ -127,13 +140,22 @@ class SaleService
                         'department_id' => $product->department_id,
                         'branch_id' => $user->branch_id,
                         'user_id' => $user->id,
+                        'from_store_id' => $store?->id,
                         'type' => 'SALE',
+                        'movement_type' => 'SALE',
                         'quantity' => $quantity,
                         'before_stock' => $beforeStock,
                         'after_stock' => $product->stock,
+                        'quantity_before' => $storeSnapshot['before'] ?? $beforeStock,
+                        'quantity_changed' => -abs($quantity),
+                        'quantity_after' => $storeSnapshot['after'] ?? $product->stock,
+                        'unit_cost' => $product->buy_price ?? 0,
+                        'total_cost' => ($product->buy_price ?? 0) * $quantity,
+                        'performed_by' => $user->id,
                         'reference_type' => Sale::class,
                         'reference_id' => $sale->id,
                         'reason' => 'POS checkout',
+                        'notes' => 'POS checkout ' . $sale->receipt_no,
                     ]);
                 }
             }

@@ -109,6 +109,14 @@
             'show' => $canRequest,
         ],
         [
+            'label' => 'Store',
+            'route' => 'store.dashboard',
+            'active' => 'store.*',
+            'icon' => 'store',
+            'group' => 'Stock',
+            'show' => $canOperate,
+        ],
+        [
             'label' => 'Inventory',
             'route' => 'inventory.index',
             'active' => 'inventory.*',
@@ -225,6 +233,7 @@
             'receipt' => '<path d="M6 3h12v18l-2-1-2 1-2-1-2 1-2-1-2 1V3Z"/><path d="M9 8h6"/><path d="M9 12h6"/><path d="M9 16h4"/>',
             'clock' => '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
             'clipboard' => '<path d="M9 4h6l1 2h3v15H5V6h3l1-2Z"/><path d="M9 12h6"/><path d="M9 16h4"/>',
+            'store' => '<path d="M4 10h16l-1-5H5l-1 5Z"/><path d="M5 10v10h14V10"/><path d="M8 20v-6h8v6"/><path d="M7 5V3h10v2"/>',
             'warehouse' => '<path d="M3 10 12 4l9 6"/><path d="M5 10v10h14V10"/><path d="M8 20v-6h8v6"/><path d="M8 14h8"/>',
             'arrows' => '<path d="M7 7h11l-3-3"/><path d="M17 17H6l3 3"/><path d="M18 7l-3 3"/><path d="M6 17l3-3"/>',
             'package' => '<path d="m21 8-9-5-9 5 9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
