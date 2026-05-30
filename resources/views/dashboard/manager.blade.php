@@ -22,6 +22,8 @@
 
     </div>
 
+    @include('dashboard._date_filter')
+
     <!-- STATS -->
 
     <div
@@ -34,7 +36,7 @@
 
             <div class="text-gray-500 text-sm">
 
-                Today's Net Revenue
+                {{ $dateLabel }} Net Revenue
 
             </div>
 
@@ -50,7 +52,7 @@
 
             <div class="text-gray-500 text-sm">
 
-                Transactions
+                {{ $dateLabel }} Transactions
 
             </div>
 
@@ -174,7 +176,7 @@
 
         <div class="bg-white rounded-2xl shadow p-6">
             <h2 class="text-2xl font-black mb-5">
-                Cashier Performance Today
+                Cashier Performance - {{ $dateLabel }}
             </h2>
 
             <div class="space-y-4">
@@ -195,7 +197,7 @@
                     </div>
                 @empty
                     <div class="text-gray-500">
-                        No cashier sales today
+                        No cashier sales for this period
                     </div>
                 @endforelse
             </div>
@@ -228,7 +230,7 @@
                     </div>
                 @empty
                     <div class="text-gray-500">
-                        No payment data yet
+                        No payment data for this period
                     </div>
                 @endforelse
             </div>
@@ -260,7 +262,7 @@
                     </div>
                 @empty
                     <div class="text-gray-500">
-                        No closed shifts yet
+                        No closed shifts for this period
                     </div>
                 @endforelse
             </div>
@@ -289,7 +291,7 @@
                     </div>
                 @empty
                     <div class="text-gray-500">
-                        No pending refunds
+                        No pending refunds for this period
                     </div>
                 @endforelse
             </div>
@@ -318,7 +320,7 @@
                     </div>
                 @empty
                     <div class="text-gray-500">
-                        No inventory movement
+                        No inventory movement for this period
                     </div>
                 @endforelse
             </div>

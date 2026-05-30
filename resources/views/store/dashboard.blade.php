@@ -62,15 +62,15 @@
             <p class="mt-3 text-3xl font-black text-rose-600">{{ number_format($summary['out_of_stock']) }}</p>
         </div>
         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p class="text-sm font-semibold text-slate-500">Stock Received Today</p>
+            <p class="text-sm font-semibold text-slate-500">Stock Received - {{ $storeDateLabel ?? 'All Time' }}</p>
             <p class="mt-3 text-3xl font-black text-emerald-600">{{ number_format($summary['received_today']) }}</p>
         </div>
         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p class="text-sm font-semibold text-slate-500">Stock Issued Today</p>
+            <p class="text-sm font-semibold text-slate-500">Stock Issued - {{ $storeDateLabel ?? 'All Time' }}</p>
             <p class="mt-3 text-3xl font-black text-blue-600">{{ number_format($summary['issued_today']) }}</p>
         </div>
         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p class="text-sm font-semibold text-slate-500">Damaged / Returned</p>
+            <p class="text-sm font-semibold text-slate-500">Damaged / Returned - {{ $storeDateLabel ?? 'All Time' }}</p>
             <p class="mt-3 text-3xl font-black text-slate-950">{{ number_format($summary['damaged_stock']) }} / {{ number_format($summary['returned_stock']) }}</p>
         </div>
     </div>

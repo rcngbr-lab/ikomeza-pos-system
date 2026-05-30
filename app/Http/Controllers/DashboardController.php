@@ -12,48 +12,70 @@ use App\Models\Shift;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\DepartmentAccessService;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
-        $analytics = $this->analyticsFor($user);
+        $dateRange = $this->dashboardDateRange($request);
+        $analytics = $this->analyticsFor($user, $dateRange);
         $selectedDepartmentId = app(DepartmentAccessService::class)->selectedDepartmentId($user);
+        $dashboardContext = [
+            'dateRange' => $dateRange,
+            'dateLabel' => $dateRange['label'],
+            'dateFilter' => $dateRange['filter'],
+        ];
 
         if ($user->hasOperationalRole('ADMIN', 'ADMINISTRATOR')) {
-            return view('dashboard.admin', array_merge($analytics, [
+            $salesForPeriod = Sale::query()->revenueBearing();
+            $this->applyDateRange($salesForPeriod, $dateRange);
+
+            $refundedForPeriod = Sale::query()->refundedOnly();
+            $this->applyDateRange($refundedForPeriod, $dateRange, 'refunded_at');
+
+            $movementsForPeriod = StockMovement::with('product', 'user')->latest();
+            $this->applyDateRange($movementsForPeriod, $dateRange);
+
+            $auditForPeriod = AuditLog::with('user')->latest();
+            $this->applyDateRange($auditForPeriod, $dateRange);
+
+            return view('dashboard.admin', array_merge($analytics, $dashboardContext, [
                 'totalProducts' => Product::count(),
                 'totalStock' => Product::sum('stock'),
-                'totalSales' => Sale::revenueBearing()->count(),
-                'totalRevenue' => Sale::revenueBearing()->sum('grand_total'),
-                'totalRefunds' => Sale::refundedAmountFor(Sale::query()),
+                'totalSales' => (clone $salesForPeriod)->count(),
+                'totalRevenue' => (clone $salesForPeriod)->sum('grand_total'),
+                'totalRefunds' => Sale::refundedAmountFor($refundedForPeriod),
                 'totalUsers' => User::count(),
                 'totalCategories' => Category::count(),
-                'cashierPerformance' => $this->cashierPerformance(),
-                'shiftDifferences' => $this->recentShiftDifferences(),
-                'pendingRefunds' => $this->pendingRefunds(),
-                'recentMovements' => StockMovement::with('product', 'user')->latest()->take(6)->get(),
-                'recentAuditLogs' => AuditLog::with('user')->latest()->take(6)->get(),
+                'cashierPerformance' => $this->cashierPerformance($dateRange),
+                'shiftDifferences' => $this->recentShiftDifferences($dateRange),
+                'pendingRefunds' => $this->pendingRefunds($dateRange),
+                'recentMovements' => $movementsForPeriod->take(6)->get(),
+                'recentAuditLogs' => $auditForPeriod->take(6)->get(),
             ]));
         }
 
         if ($user->hasOperationalRole('MANAGER', 'STORE_KEEPER', 'KITCHEN_MANAGER', 'KITCHEN_CHIEF', 'BAR_MANAGER', 'BAR_CHIEF', 'BARTENDER')) {
-            return view('dashboard.manager', [
+            $movementsForPeriod = StockMovement::with('product', 'department', 'user')
+                ->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))
+                ->latest();
+
+            $this->applyDateRange($movementsForPeriod, $dateRange);
+
+            return view('dashboard.manager', array_merge($dashboardContext, [
                 'todayRevenue' => $analytics['todayRevenue'],
                 'todayTransactions' => $analytics['todayTransactions'],
                 'lowStock' => $analytics['lowStockProducts'],
                 'paymentBreakdown' => $analytics['paymentBreakdown'],
                 'recentSales' => $analytics['recentSales'],
-                'cashierPerformance' => $this->cashierPerformance(),
-                'shiftDifferences' => $this->recentShiftDifferences(),
-                'pendingRefunds' => $this->pendingRefunds(),
-                'recentMovements' => StockMovement::with('product', 'department', 'user')
-                    ->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))
-                    ->latest()
-                    ->take(6)
-                    ->get(),
-            ]);
+                'cashierPerformance' => $this->cashierPerformance($dateRange),
+                'shiftDifferences' => $this->recentShiftDifferences($dateRange),
+                'pendingRefunds' => $this->pendingRefunds($dateRange),
+                'recentMovements' => $movementsForPeriod->take(6)->get(),
+            ]));
         }
 
         if ($user->hasOperationalRole('CASHIER', 'WAITER', 'SERVER')) {
@@ -66,8 +88,9 @@ class DashboardController extends Controller
                 ->first();
 
             $todaySales = Sale::where('user_id', $user->id)
-                ->where('sale_status', 'COMPLETED')
-                ->whereDate('created_at', today());
+                ->revenueBearing();
+
+            $this->applyDateRange($todaySales, $dateRange);
 
             $shiftCashSales = $activeShift
                 ? Sale::where('shift_id', $activeShift->id)
@@ -76,7 +99,12 @@ class DashboardController extends Controller
                     ->sum('grand_total')
                 : 0;
 
-            return view('dashboard.cashier', [
+            $recentSales = Sale::where('user_id', $user->id)
+                ->latest();
+
+            $this->applyDateRange($recentSales, $dateRange);
+
+            return view('dashboard.cashier', array_merge($dashboardContext, [
                 'todayRevenue' => (clone $todaySales)->sum('grand_total'),
                 'todayTransactions' => (clone $todaySales)->count(),
                 'paymentBreakdown' => (clone $todaySales)
@@ -84,10 +112,7 @@ class DashboardController extends Controller
                     ->groupBy('payment_method')
                     ->orderByDesc('total')
                     ->get(),
-                'recentSales' => Sale::where('user_id', $user->id)
-                    ->latest()
-                    ->take(8)
-                    ->get(),
+                'recentSales' => $recentSales->take(8)->get(),
                 'activeShift' => $activeShift,
                 'expectedCash' => $activeShift
                     ? (float) $activeShift->opening_cash + (float) $shiftCashSales
@@ -97,13 +122,13 @@ class DashboardController extends Controller
                     ->orderBy('stock')
                     ->take(5)
                     ->get(['id', 'name', 'stock', 'alert_stock']),
-            ]);
+            ]));
         }
 
         abort(403);
     }
 
-    private function analyticsFor($user): array
+    private function analyticsFor($user, array $dateRange): array
     {
         $selectedDepartmentId = app(DepartmentAccessService::class)->selectedDepartmentId($user);
         $salesQuery = Sale::query()->revenueBearing();
@@ -116,21 +141,26 @@ class DashboardController extends Controller
             $salesQuery->where('user_id', $user->id);
         }
 
-        $recentSales = (clone $salesQuery)
+        $periodSalesQuery = clone $salesQuery;
+        $this->applyDateRange($periodSalesQuery, $dateRange);
+
+        $recentSales = (clone $periodSalesQuery)
             ->with('user', 'items.department')
             ->latest()
             ->take(10)
             ->get();
 
-        $todayTransactions = (clone $salesQuery)->whereDate('created_at', today())->count();
+        $todayTransactions = (clone $periodSalesQuery)->count();
 
         if ($selectedDepartmentId) {
-            $todayRevenue = $this->departmentRevenueFor($salesQuery, $selectedDepartmentId, fn ($sale) => $sale->whereDate('created_at', today()));
+            $todayRevenue = $this->departmentRevenueFor($salesQuery, $selectedDepartmentId, function ($sale) use ($dateRange) {
+                $this->applyDateRange($sale, $dateRange);
+            });
             $weekRevenue = $this->departmentRevenueFor($salesQuery, $selectedDepartmentId, fn ($sale) => $sale->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]));
             $monthRevenue = $this->departmentRevenueFor($salesQuery, $selectedDepartmentId, fn ($sale) => $sale->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year));
             $yearRevenue = $this->departmentRevenueFor($salesQuery, $selectedDepartmentId, fn ($sale) => $sale->whereYear('created_at', now()->year));
         } else {
-            $todayRevenue = (clone $salesQuery)->whereDate('created_at', today())->sum('grand_total');
+            $todayRevenue = (clone $periodSalesQuery)->sum('grand_total');
             $weekRevenue = (clone $salesQuery)
                 ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
                 ->sum('grand_total');
@@ -144,7 +174,10 @@ class DashboardController extends Controller
         }
 
         $topProducts = SaleItem::with('product.department')
-            ->whereHas('sale', fn ($sale) => $sale->revenueBearing())
+            ->whereHas('sale', function ($sale) use ($dateRange) {
+                $sale->revenueBearing();
+                $this->applyDateRange($sale, $dateRange);
+            })
             ->when($selectedDepartmentId, fn ($items) => $items->where('department_id', $selectedDepartmentId))
             ->selectRaw('product_id, SUM(quantity) as units_sold, SUM(subtotal) as revenue')
             ->groupBy('product_id')
@@ -161,18 +194,22 @@ class DashboardController extends Controller
                     $query->whereNull('sales.is_refunded')
                         ->orWhere('sales.is_refunded', false);
                 })
+                ->when($dateRange['start'], fn ($query) => $query->where('sales.created_at', '>=', $dateRange['start']))
+                ->when($dateRange['end'], fn ($query) => $query->where('sales.created_at', '<=', $dateRange['end']))
                 ->selectRaw('sales.payment_method, SUM(sale_items.subtotal) as total, COUNT(DISTINCT sales.id) as count')
                 ->groupBy('sales.payment_method')
                 ->orderByDesc('total')
                 ->get()
-            : Sale::query()
-                ->revenueBearing()
+            : (clone $periodSalesQuery)
                 ->selectRaw('payment_method, SUM(grand_total) as total, COUNT(*) as count')
                 ->groupBy('payment_method')
                 ->orderByDesc('total')
                 ->get();
 
-        $profit = SaleItem::whereHas('sale', fn ($sale) => $sale->revenueBearing())
+        $profit = SaleItem::whereHas('sale', function ($sale) use ($dateRange) {
+                $sale->revenueBearing();
+                $this->applyDateRange($sale, $dateRange);
+            })
             ->when($selectedDepartmentId, fn ($items) => $items->where('department_id', $selectedDepartmentId))
             ->sum('profit');
         $lowStockProducts = Product::with('department')
@@ -204,7 +241,7 @@ class DashboardController extends Controller
         ];
     }
 
-    private function cashierPerformance()
+    private function cashierPerformance(array $dateRange)
     {
         return User::query()
             ->where(function ($query) {
@@ -221,15 +258,15 @@ class DashboardController extends Controller
                     });
             })
             ->withCount([
-                'sales as transactions_today' => function ($query) {
-                    $query->where('sale_status', 'COMPLETED')
-                        ->whereDate('created_at', today());
+                'sales as transactions_today' => function ($query) use ($dateRange) {
+                    $query->revenueBearing();
+                    $this->applyDateRange($query, $dateRange);
                 },
             ])
             ->withSum([
-                'sales as revenue_today' => function ($query) {
-                    $query->where('sale_status', 'COMPLETED')
-                        ->whereDate('created_at', today());
+                'sales as revenue_today' => function ($query) use ($dateRange) {
+                    $query->revenueBearing();
+                    $this->applyDateRange($query, $dateRange);
                 },
             ], 'grand_total')
             ->orderByDesc('revenue_today')
@@ -239,7 +276,8 @@ class DashboardController extends Controller
 
     private function departmentRevenueFor($salesQuery, int $departmentId, callable $dateScope): float
     {
-        $scopedSales = $dateScope(clone $salesQuery);
+        $scopedSales = clone $salesQuery;
+        $dateScope($scopedSales);
 
         return (float) SaleItem::where('department_id', $departmentId)
             ->whereHas('sale', function ($sale) use ($scopedSales) {
@@ -248,21 +286,128 @@ class DashboardController extends Controller
             ->sum('subtotal');
     }
 
-    private function recentShiftDifferences()
+    private function recentShiftDifferences(array $dateRange)
     {
-        return Shift::with('user')
+        $query = Shift::with('user')
             ->whereNotNull('closed_at')
-            ->latest('closed_at')
+            ->latest('closed_at');
+
+        $this->applyDateRange($query, $dateRange, 'closed_at');
+
+        return $query
             ->take(6)
             ->get();
     }
 
-    private function pendingRefunds()
+    private function pendingRefunds(array $dateRange)
     {
-        return Refund::with('sale.user', 'user')
+        $query = Refund::with('sale.user', 'user')
             ->where('status', Refund::STATUS_PENDING)
-            ->latest()
+            ->latest();
+
+        $this->applyDateRange($query, $dateRange);
+
+        return $query
             ->take(6)
             ->get();
+    }
+
+    private function dashboardDateRange(Request $request): array
+    {
+        $filter = $request->input('filter', 'today');
+        $start = null;
+        $end = null;
+        $label = 'Today';
+
+        if ($request->filled('start_date') || $request->filled('end_date')) {
+            $filter = 'range';
+        }
+
+        switch ($filter) {
+            case 'all':
+                $label = 'All Time';
+                break;
+            case 'yesterday':
+                $start = today()->subDay()->startOfDay();
+                $end = today()->subDay()->endOfDay();
+                $label = 'Yesterday';
+                break;
+            case 'week':
+                $start = now()->startOfWeek();
+                $end = now()->endOfWeek();
+                $label = 'This Week';
+                break;
+            case 'last_week':
+                $start = now()->subWeek()->startOfWeek();
+                $end = now()->subWeek()->endOfWeek();
+                $label = 'Last Week';
+                break;
+            case 'month':
+                $start = now()->startOfMonth();
+                $end = now()->endOfMonth();
+                $label = 'This Month';
+                break;
+            case 'last_month':
+                $start = now()->subMonthNoOverflow()->startOfMonth();
+                $end = now()->subMonthNoOverflow()->endOfMonth();
+                $label = 'Last Month';
+                break;
+            case 'year':
+                $start = now()->startOfYear();
+                $end = now()->endOfYear();
+                $label = 'This Year';
+                break;
+            case 'range':
+                $start = $request->filled('start_date')
+                    ? Carbon::parse($request->start_date)->startOfDay()
+                    : null;
+                $end = $request->filled('end_date')
+                    ? Carbon::parse($request->end_date)->endOfDay()
+                    : null;
+                $label = $this->customDateLabel($start, $end);
+                break;
+            case 'today':
+            default:
+                $filter = 'today';
+                $start = today()->startOfDay();
+                $end = today()->endOfDay();
+                $label = 'Today';
+                break;
+        }
+
+        return [
+            'filter' => $filter,
+            'start' => $start,
+            'end' => $end,
+            'label' => $label,
+        ];
+    }
+
+    private function applyDateRange($query, array $dateRange, string $column = 'created_at'): void
+    {
+        if ($dateRange['start']) {
+            $query->where($column, '>=', $dateRange['start']);
+        }
+
+        if ($dateRange['end']) {
+            $query->where($column, '<=', $dateRange['end']);
+        }
+    }
+
+    private function customDateLabel(?Carbon $start, ?Carbon $end): string
+    {
+        if ($start && $end) {
+            return $start->format('M d, Y') . ' - ' . $end->format('M d, Y');
+        }
+
+        if ($start) {
+            return 'From ' . $start->format('M d, Y');
+        }
+
+        if ($end) {
+            return 'Until ' . $end->format('M d, Y');
+        }
+
+        return 'Custom Range';
     }
 }

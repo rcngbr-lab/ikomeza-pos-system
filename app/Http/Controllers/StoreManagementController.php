@@ -53,6 +53,22 @@ class StoreManagementController extends Controller
             ->groupBy('store_id')
             ->pluck('value', 'store_id');
 
+        $receivedQuery = $this->filteredMovements($context)
+            ->whereIn('type', ['PURCHASE_RECEIVED', 'STOCK_IN']);
+        $this->applyDateFilter($receivedQuery, $request);
+
+        $issuedQuery = $this->filteredMovements($context)
+            ->whereIn('type', ['STORE_ISSUE', 'STORE_TRANSFER', 'STOCK_OUT']);
+        $this->applyDateFilter($issuedQuery, $request);
+
+        $damagedQuery = StockDamage::query()
+            ->when($context['selectedDepartmentId'], fn ($query) => $query->where('department_id', $context['selectedDepartmentId']));
+        $this->applyDateFilter($damagedQuery, $request);
+
+        $returnedQuery = StockReturn::query()
+            ->when($context['selectedDepartmentId'], fn ($query) => $query->where('department_id', $context['selectedDepartmentId']));
+        $this->applyDateFilter($returnedQuery, $request);
+
         $summary = [
             'total_value' => (clone $stockBase)->sum('total_value'),
             'low_stock' => (clone $stockBase)->whereColumn('quantity', '<=', 'alert_stock')->where('quantity', '>', 0)->count(),
@@ -64,21 +80,21 @@ class StoreManagementController extends Controller
                 Purchase::STATUS_ORDERED,
                 Purchase::STATUS_PARTIALLY_RECEIVED,
             ])->count(),
-            'received_today' => $this->filteredMovements($context)->whereDate('created_at', today())->whereIn('type', ['PURCHASE_RECEIVED', 'STOCK_IN'])->sum('quantity'),
-            'issued_today' => $this->filteredMovements($context)->whereDate('created_at', today())->whereIn('type', ['STORE_ISSUE', 'STORE_TRANSFER', 'STOCK_OUT'])->sum('quantity'),
-            'damaged_stock' => StockDamage::query()
-                ->when($context['selectedDepartmentId'], fn ($query) => $query->where('department_id', $context['selectedDepartmentId']))
-                ->sum('quantity'),
-            'returned_stock' => StockReturn::query()
-                ->when($context['selectedDepartmentId'], fn ($query) => $query->where('department_id', $context['selectedDepartmentId']))
-                ->sum('quantity'),
+            'received_today' => $receivedQuery->sum('quantity'),
+            'issued_today' => $issuedQuery->sum('quantity'),
+            'damaged_stock' => $damagedQuery->sum('quantity'),
+            'returned_stock' => $returnedQuery->sum('quantity'),
         ];
+
+        $storeDateLabel = $this->dateFilterLabel($request);
 
         $recentMovements = $this->filteredMovements($context)
             ->with(['product', 'fromStore', 'toStore', 'user'])
-            ->latest()
-            ->take(8)
-            ->get();
+            ->latest();
+
+        $this->applyDateFilter($recentMovements, $request);
+
+        $recentMovements = $recentMovements->take(8)->get();
 
         $pendingPurchases = $this->filteredPurchases($context)
             ->with(['supplier', 'store', 'purchaser', 'approver'])
@@ -92,7 +108,8 @@ class StoreManagementController extends Controller
             'storeValues',
             'summary',
             'recentMovements',
-            'pendingPurchases'
+            'pendingPurchases',
+            'storeDateLabel'
         )));
     }
 
@@ -976,11 +993,14 @@ class StoreManagementController extends Controller
 
     private function applyDateFilter($query, Request $request): void
     {
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween('created_at', [
-                $request->start_date . ' 00:00:00',
-                $request->end_date . ' 23:59:59',
-            ]);
+        if ($request->filled('start_date') || $request->filled('end_date')) {
+            if ($request->filled('start_date')) {
+                $query->where('created_at', '>=', $request->start_date . ' 00:00:00');
+            }
+
+            if ($request->filled('end_date')) {
+                $query->where('created_at', '<=', $request->end_date . ' 23:59:59');
+            }
 
             return;
         }
@@ -994,6 +1014,30 @@ class StoreManagementController extends Controller
             'last_month' => $query->whereMonth('created_at', now()->subMonth()->month)->whereYear('created_at', now()->subMonth()->year),
             'year' => $query->whereYear('created_at', now()->year),
             default => null,
+        };
+    }
+
+    private function dateFilterLabel(Request $request): string
+    {
+        if ($request->filled('start_date') || $request->filled('end_date')) {
+            if ($request->filled('start_date') && $request->filled('end_date')) {
+                return $request->start_date . ' - ' . $request->end_date;
+            }
+
+            return $request->filled('start_date')
+                ? 'From ' . $request->start_date
+                : 'Until ' . $request->end_date;
+        }
+
+        return match ($request->input('filter')) {
+            'today' => 'Today',
+            'yesterday' => 'Yesterday',
+            'week' => 'This Week',
+            'last_week' => 'Last Week',
+            'month' => 'This Month',
+            'last_month' => 'Last Month',
+            'year' => 'This Year',
+            default => 'All Time',
         };
     }
 

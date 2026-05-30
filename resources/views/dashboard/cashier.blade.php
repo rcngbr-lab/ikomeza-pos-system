@@ -22,6 +22,8 @@
 
     </div>
 
+    @include('dashboard._date_filter')
+
     <!-- QUICK ACTIONS -->
 
     <div class="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
@@ -120,7 +122,7 @@
 
             <div class="text-gray-500 text-sm">
 
-                Transactions
+                {{ $dateLabel }} Transactions
 
             </div>
 
@@ -136,7 +138,7 @@
 
             <div class="text-gray-500 text-sm">
 
-                Net Revenue
+                {{ $dateLabel }} Net Revenue
 
             </div>
 
@@ -216,7 +218,7 @@
                     </div>
                 @empty
                     <div class="text-gray-500">
-                        No payments recorded today
+                        No payments recorded for this period
                     </div>
                 @endforelse
             </div>
@@ -313,7 +315,7 @@
 
                 <div class="text-gray-500">
 
-                    No recent sales
+                    No sales found for this period
 
                 </div>
 

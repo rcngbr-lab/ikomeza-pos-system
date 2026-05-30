@@ -4,10 +4,10 @@
 
 @php
     $kpis = [
-        ['label' => 'Today Net Revenue', 'value' => number_format($todayRevenue) . ' RWF', 'tone' => 'text-emerald-600'],
+        ['label' => $dateLabel . ' Net Revenue', 'value' => number_format($todayRevenue) . ' RWF', 'tone' => 'text-emerald-600'],
         ['label' => 'Monthly Net Revenue', 'value' => number_format($monthRevenue) . ' RWF', 'tone' => 'text-indigo-600'],
-        ['label' => 'Refunds', 'value' => number_format($totalRefunds ?? 0) . ' RWF', 'tone' => 'text-rose-600'],
-        ['label' => 'Gross Profit', 'value' => number_format($profit) . ' RWF', 'tone' => 'text-slate-950'],
+        ['label' => $dateLabel . ' Refunds', 'value' => number_format($totalRefunds ?? 0) . ' RWF', 'tone' => 'text-rose-600'],
+        ['label' => $dateLabel . ' Gross Profit', 'value' => number_format($profit) . ' RWF', 'tone' => 'text-slate-950'],
         ['label' => 'Inventory Value', 'value' => number_format($inventoryValue) . ' RWF', 'tone' => 'text-amber-600'],
     ];
 
@@ -47,6 +47,8 @@
             </a>
         </div>
     </div>
+
+    @include('dashboard._date_filter')
 
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         @foreach($kpis as $kpi)
@@ -228,7 +230,7 @@
                     <div class="flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-4">
                         <div class="min-w-0">
                             <p class="truncate text-sm font-black text-slate-950">{{ $cashier->name }}</p>
-                            <p class="mt-1 text-xs font-semibold text-slate-500">{{ $cashier->transactions_today }} transactions today</p>
+                            <p class="mt-1 text-xs font-semibold text-slate-500">{{ $cashier->transactions_today }} transactions</p>
                         </div>
                         <span class="text-sm font-black text-emerald-600">{{ number_format($cashier->revenue_today ?? 0) }}</span>
                     </div>
