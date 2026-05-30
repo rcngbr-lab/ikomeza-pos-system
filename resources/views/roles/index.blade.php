@@ -5,23 +5,24 @@
 <style>
 
 .roles-page{
-    padding:30px;
+    padding:18px;
 }
 
 .page-header{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    margin-bottom:30px;
-    gap:20px;
+    margin-bottom:18px;
+    gap:14px;
     flex-wrap:wrap;
 }
 
 .page-title{
-    font-size:38px;
+    font-size:32px;
     font-weight:800;
     color:#0f172a;
-    margin-bottom:6px;
+    margin-bottom:4px;
+    line-height:1.05;
 }
 
 .page-subtitle{
@@ -32,10 +33,11 @@
 .add-role-btn{
     background:#2563eb;
     color:white;
-    padding:14px 22px;
-    border-radius:12px;
+    padding:10px 16px;
+    border-radius:10px;
     text-decoration:none;
     font-weight:700;
+    font-size:14px;
     transition:0.2s ease;
 }
 
@@ -46,53 +48,62 @@
 .roles-grid{
     display:grid;
     grid-template-columns:
-        repeat(auto-fit, minmax(340px, 1fr));
-    gap:25px;
+        repeat(auto-fill, minmax(220px, 1fr));
+    align-items:start;
+    gap:14px;
 }
 
 .role-card{
     background:white;
-    border-radius:18px;
-    padding:22px;
-    box-shadow:0 4px 12px rgba(0,0,0,0.06);
+    border-radius:14px;
+    padding:14px;
+    box-shadow:0 2px 8px rgba(15,23,42,0.06);
     border:1px solid #e5e7eb;
     transition:0.2s ease;
 }
 
 .role-card:hover{
-    transform:translateY(-3px);
+    transform:translateY(-2px);
+    border-color:#c7d2fe;
+    box-shadow:0 8px 20px rgba(15,23,42,0.08);
 }
 
 .role-top{
     display:flex;
     justify-content:space-between;
     align-items:flex-start;
-    margin-bottom:20px;
+    gap:10px;
+    margin-bottom:12px;
 }
 
 .role-code{
     display:inline-block;
     background:#dbeafe;
     color:#2563eb;
-    font-size:13px;
+    font-size:10px;
     font-weight:700;
-    padding:8px 14px;
+    padding:5px 9px;
     border-radius:999px;
-    margin-bottom:16px;
+    margin-bottom:10px;
+    max-width:150px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
 }
 
 .role-id{
-    font-size:18px;
+    font-size:13px;
     font-weight:700;
     color:#64748b;
+    white-space:nowrap;
 }
 
 .role-name{
-    font-size:22px;
+    font-size:17px;
     font-weight:800;
     color:#0f172a;
-    margin-bottom:14px;
-    line-height:1.3;
+    margin-bottom:0;
+    line-height:1.2;
 
     word-break:break-word;
     overflow-wrap:anywhere;
@@ -100,22 +111,25 @@
 
 .role-description{
     color:#475569;
-    line-height:1.6;
-    margin-bottom:20px;
-    min-height:70px;
-    font-size:14px;
-    white-space:pre-line;
+    line-height:1.45;
+    margin-bottom:14px;
+    min-height:36px;
+    font-size:12px;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
 }
 
 .role-footer{
-    margin-bottom:25px;
+    margin-bottom:14px;
 }
 
 .role-badge{
     display:inline-block;
-    padding:10px 18px;
+    padding:7px 11px;
     border-radius:999px;
-    font-size:14px;
+    font-size:11px;
     font-weight:700;
 }
 
@@ -136,17 +150,18 @@
 
 .role-actions{
     display:flex;
-    gap:12px;
+    gap:8px;
     flex-wrap:wrap;
 }
 
 .btn-edit{
     background:#2563eb;
     color:white;
-    padding:12px 18px;
-    border-radius:10px;
+    padding:9px 12px;
+    border-radius:9px;
     text-decoration:none;
     font-weight:700;
+    font-size:12px;
     transition:0.2s ease;
 }
 
@@ -157,10 +172,11 @@
 .btn-permissions{
     background:#16a34a;
     color:white;
-    padding:12px 18px;
-    border-radius:10px;
+    padding:9px 12px;
+    border-radius:9px;
     text-decoration:none;
     font-weight:700;
+    font-size:12px;
     transition:0.2s ease;
 }
 
@@ -184,6 +200,59 @@
 
 .empty-state p{
     color:#64748b;
+}
+
+@media (max-width: 768px){
+    .roles-page{
+        padding:10px 0 16px;
+    }
+
+    .page-title{
+        font-size:26px;
+    }
+
+    .page-subtitle{
+        font-size:13px;
+    }
+
+    .roles-grid{
+        grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
+        gap:10px;
+    }
+
+    .role-card{
+        border-radius:12px;
+        padding:11px;
+    }
+
+    .role-code{
+        max-width:104px;
+        font-size:9px;
+        padding:4px 7px;
+    }
+
+    .role-name{
+        font-size:14px;
+    }
+
+    .role-description{
+        min-height:32px;
+        font-size:11px;
+    }
+
+    .role-badge{
+        font-size:10px;
+        padding:6px 9px;
+    }
+
+    .btn-edit,
+    .btn-permissions{
+        flex:1;
+        min-width:0;
+        padding:8px 9px;
+        text-align:center;
+        font-size:11px;
+    }
 }
 
 </style>
