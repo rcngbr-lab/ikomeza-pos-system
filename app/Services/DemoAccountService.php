@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Department;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\DefaultRolePermissionService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -57,6 +58,8 @@ class DemoAccountService
 
             $user->syncRoles([$role->name]);
         }
+
+        app(DefaultRolePermissionService::class)->ensureRolePermissions();
     }
 
     private function ensureRoles(): array
