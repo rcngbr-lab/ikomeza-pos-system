@@ -24,6 +24,20 @@
 
     $canManageStaff = $user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER');
     $canAdmin = $user->hasOperationalRole('ADMIN', 'ADMINISTRATOR');
+    $canAuditLogs = $user->hasOperationalRole(
+        'ADMIN',
+        'ADMINISTRATOR',
+        'MANAGER',
+        'STORE_KEEPER',
+        'KITCHEN_MANAGER',
+        'KITCHEN_CHIEF',
+        'BAR_MANAGER',
+        'BAR_CHIEF',
+        'BARTENDER',
+        'CASHIER',
+        'WAITER',
+        'SERVER'
+    );
     $canShift = $user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER', 'CASHIER', 'WAITER', 'SERVER');
     $canViewSales = $user->hasOperationalRole(
         'ADMIN',
@@ -188,7 +202,7 @@
             'active' => 'audit.*',
             'icon' => 'activity',
             'group' => 'Admin',
-            'show' => $canAdmin,
+            'show' => $canAuditLogs,
         ],
     ])
         ->filter(fn ($item) => $item['show'] && Route::has($item['route']))

@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Models\StockRequisition;
+use App\Services\AuditLogService;
 use App\Services\DepartmentAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -91,7 +92,7 @@ class StockRequisitionController extends Controller
             $product->department_id
         );
 
-        StockRequisition::create([
+        $requisition = StockRequisition::create([
             'product_id' => $product->id,
             'department_id' => $product->department_id,
             'requester_id' => $request->user()->id,
@@ -99,6 +100,22 @@ class StockRequisitionController extends Controller
             'quantity' => (int) $validated['quantity'],
             'status' => StockRequisition::STATUS_PENDING,
             'reason' => $validated['reason'] ?? null,
+        ]);
+
+        AuditLogService::record([
+            'action' => 'REQUISITION_SUBMITTED',
+            'module' => 'Requisitions',
+            'model' => StockRequisition::class,
+            'model_id' => $requisition->id,
+            'department_id' => $requisition->department_id,
+            'branch_id' => $request->user()->branch_id,
+            'reference' => 'RQ-' . str_pad((string) $requisition->id, 6, '0', STR_PAD_LEFT),
+            'description' => 'Submitted ' . $requisition->typeLabel() . ' requisition for ' . $product->name . ' (' . number_format($requisition->quantity) . ' units).',
+            'new_values' => $requisition->only(['type', 'quantity', 'status', 'reason']),
+            'quantity_changed' => $requisition->quantity,
+            'metadata' => [
+                'product' => $product->name,
+            ],
         ]);
 
         return back()->with('success', 'Requisition submitted for approval.');
@@ -125,6 +142,23 @@ class StockRequisitionController extends Controller
                     'approver_id' => $request->user()->id,
                     'manager_note' => $request->input('manager_note'),
                     'approved_at' => now(),
+                ]);
+
+                AuditLogService::record([
+                    'action' => 'REQUISITION_APPROVED',
+                    'module' => 'Requisitions',
+                    'model' => StockRequisition::class,
+                    'model_id' => $requisition->id,
+                    'department_id' => $requisition->department_id,
+                    'branch_id' => $request->user()->branch_id,
+                    'reference' => 'RQ-' . str_pad((string) $requisition->id, 6, '0', STR_PAD_LEFT),
+                    'description' => 'Approved requisition #' . $requisition->id . ' and updated stock.',
+                    'old_values' => ['status' => StockRequisition::STATUS_PENDING],
+                    'new_values' => [
+                        'status' => StockRequisition::STATUS_APPROVED,
+                        'approver_id' => $request->user()->id,
+                    ],
+                    'quantity_changed' => $requisition->quantity,
                 ]);
             });
         } catch (\Throwable $exception) {
@@ -157,6 +191,23 @@ class StockRequisitionController extends Controller
                     'approver_id' => $request->user()->id,
                     'manager_note' => $request->input('manager_note') ?: 'Rejected by manager',
                     'approved_at' => now(),
+                ]);
+
+                AuditLogService::record([
+                    'action' => 'REQUISITION_REJECTED',
+                    'module' => 'Requisitions',
+                    'model' => StockRequisition::class,
+                    'model_id' => $requisition->id,
+                    'department_id' => $requisition->department_id,
+                    'branch_id' => $request->user()->branch_id,
+                    'reference' => 'RQ-' . str_pad((string) $requisition->id, 6, '0', STR_PAD_LEFT),
+                    'description' => 'Rejected requisition #' . $requisition->id . '.',
+                    'old_values' => ['status' => StockRequisition::STATUS_PENDING],
+                    'new_values' => [
+                        'status' => StockRequisition::STATUS_REJECTED,
+                        'manager_note' => $request->input('manager_note') ?: 'Rejected by manager',
+                    ],
+                    'severity' => 'WARNING',
                 ]);
             });
         } catch (\Throwable $exception) {

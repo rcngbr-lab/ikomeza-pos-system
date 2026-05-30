@@ -403,7 +403,25 @@ Route::middleware([
         '/audit-logs',
         [AuditLogController::class, 'index']
     )->name('audit.logs')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER,CASHIER,WAITER,SERVER');
+
+    Route::get(
+        '/audit-logs/print',
+        [AuditLogController::class, 'print']
+    )->name('audit.logs.print')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER');
+
+    Route::get(
+        '/audit-logs/export/{format}',
+        [AuditLogController::class, 'export']
+    )->name('audit.logs.export')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER');
+
+    Route::get(
+        '/audit-logs/{auditLog}',
+        [AuditLogController::class, 'show']
+    )->name('audit.logs.show')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER,CASHIER,WAITER,SERVER');
 
 });
 

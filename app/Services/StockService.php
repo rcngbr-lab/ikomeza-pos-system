@@ -68,6 +68,8 @@ class StockService
             |--------------------------------------------------------------------------
             */
 
+            $beforeStock = (int) $product->stock;
+
             $product->decrement(
 
                 'stock',
@@ -75,6 +77,8 @@ class StockService
                 $quantity
 
             );
+
+            $product->refresh();
 
             /*
             |--------------------------------------------------------------------------
@@ -100,7 +104,23 @@ class StockService
                     $reason
                     ? ' (' . $reason . ')'
                     : ''
-                )
+                ),
+                $product->id,
+                ['stock' => $beforeStock],
+                ['stock' => $product->stock],
+                'INFO',
+                [
+                    'module' => 'Inventory',
+                    'department_id' => $product->department_id,
+                    'reference' => $product->product_code ?? $product->barcode,
+                    'quantity_before' => $beforeStock,
+                    'quantity_changed' => -$quantity,
+                    'quantity_after' => $product->stock,
+                    'metadata' => [
+                        'product' => $product->name,
+                        'reason' => $reason,
+                    ],
+                ]
 
             );
         });
@@ -149,6 +169,8 @@ class StockService
             |--------------------------------------------------------------------------
             */
 
+            $beforeStock = (int) $product->stock;
+
             $product->increment(
 
                 'stock',
@@ -156,6 +178,8 @@ class StockService
                 $quantity
 
             );
+
+            $product->refresh();
 
             /*
             |--------------------------------------------------------------------------
@@ -181,7 +205,23 @@ class StockService
                     $reason
                     ? ' (' . $reason . ')'
                     : ''
-                )
+                ),
+                $product->id,
+                ['stock' => $beforeStock],
+                ['stock' => $product->stock],
+                'INFO',
+                [
+                    'module' => 'Inventory',
+                    'department_id' => $product->department_id,
+                    'reference' => $product->product_code ?? $product->barcode,
+                    'quantity_before' => $beforeStock,
+                    'quantity_changed' => $quantity,
+                    'quantity_after' => $product->stock,
+                    'metadata' => [
+                        'product' => $product->name,
+                        'reason' => $reason,
+                    ],
+                ]
 
             );
         });

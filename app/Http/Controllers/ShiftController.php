@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Sale;
 use App\Models\Shift;
+use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 
 class ShiftController extends Controller
@@ -40,6 +41,21 @@ class ShiftController extends Controller
             'status' => 'OPEN',
             'is_open' => true,
             'opened_at' => now(),
+        ]);
+
+        AuditLogService::record([
+            'action' => 'SHIFT_OPENED',
+            'module' => 'Shifts',
+            'model' => Shift::class,
+            'model_id' => $shift->id,
+            'branch_id' => $shift->branch_id,
+            'reference' => $shift->shift_code,
+            'description' => 'Opened shift with opening cash ' . number_format((float) $shift->opening_cash) . ' RWF.',
+            'amount' => $shift->opening_cash,
+            'new_values' => [
+                'opening_cash' => $shift->opening_cash,
+                'status' => 'OPEN',
+            ],
         ]);
 
         return redirect()
@@ -103,6 +119,27 @@ class ShiftController extends Controller
             'visa_sales' => $totals['visaSales'],
             'mastercard_sales' => $totals['mastercardSales'],
             'bank_transfer_sales' => $totals['bankSales'],
+        ]);
+
+        AuditLogService::record([
+            'action' => 'SHIFT_CLOSED',
+            'module' => 'Shifts',
+            'model' => Shift::class,
+            'model_id' => $shift->id,
+            'branch_id' => $shift->branch_id,
+            'reference' => $shift->shift_code,
+            'description' => 'Closed shift. Expected cash ' . number_format($expectedCash) . ' RWF, closing cash ' . number_format((float) $request->closing_cash) . ' RWF.',
+            'amount' => $totals['totalSales'],
+            'old_values' => [
+                'status' => 'OPEN',
+                'expected_cash' => $expectedCash,
+            ],
+            'new_values' => [
+                'status' => 'CLOSED',
+                'closing_cash' => $request->closing_cash,
+                'difference' => $difference,
+            ],
+            'severity' => abs($difference) > 0 ? 'WARNING' : 'INFO',
         ]);
 
         return redirect()

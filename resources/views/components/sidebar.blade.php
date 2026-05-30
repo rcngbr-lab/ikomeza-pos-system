@@ -31,6 +31,21 @@
         'SERVER'
     );
 
+    $canAuditLogs = $user->hasOperationalRole(
+        'ADMIN',
+        'ADMINISTRATOR',
+        'MANAGER',
+        'STORE_KEEPER',
+        'KITCHEN_MANAGER',
+        'KITCHEN_CHIEF',
+        'BAR_MANAGER',
+        'BAR_CHIEF',
+        'BARTENDER',
+        'CASHIER',
+        'WAITER',
+        'SERVER'
+    );
+
     $links = [
         ['label' => 'Dashboard', 'route' => 'dashboard', 'mark' => 'DB'],
     ];
@@ -83,8 +98,11 @@
         $links = array_merge($links, [
             ['label' => 'Roles', 'route' => 'roles.index', 'mark' => 'RO'],
             ['label' => 'Permissions', 'route' => 'permissions.index', 'mark' => 'PM'],
-            ['label' => 'Audit Logs', 'route' => 'audit.logs', 'mark' => 'AU'],
         ]);
+    }
+
+    if ($canAuditLogs) {
+        $links[] = ['label' => 'Audit Logs', 'route' => 'audit.logs', 'mark' => 'AU'];
     }
 @endphp
 

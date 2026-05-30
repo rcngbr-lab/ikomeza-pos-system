@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Services\AdminAccountService;
+use App\Services\AuditLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
@@ -27,9 +29,32 @@ class AuthenticatedSessionController extends Controller
     {
         app(AdminAccountService::class)->ensure();
 
-        $request->authenticate();
+        try {
+            $request->authenticate();
+        } catch (ValidationException $exception) {
+            AuditLogService::record([
+                'action' => 'LOGIN_FAILED',
+                'module' => 'Security',
+                'event_type' => 'SECURITY',
+                'description' => 'Failed login attempt for ' . $request->input('email'),
+                'metadata' => [
+                    'email' => $request->input('email'),
+                ],
+                'severity' => 'SECURITY',
+            ]);
+
+            throw $exception;
+        }
 
         $request->session()->regenerate();
+
+        AuditLogService::record([
+            'action' => 'LOGIN_SUCCESS',
+            'module' => 'Security',
+            'event_type' => 'SECURITY',
+            'description' => 'User logged in successfully.',
+            'severity' => 'INFO',
+        ]);
 
         return redirect()->intended(route('dashboard', absolute: false));
     }
@@ -39,6 +64,14 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        AuditLogService::record([
+            'action' => 'LOGOUT',
+            'module' => 'Security',
+            'event_type' => 'SECURITY',
+            'description' => 'User logged out.',
+            'severity' => 'INFO',
+        ]);
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

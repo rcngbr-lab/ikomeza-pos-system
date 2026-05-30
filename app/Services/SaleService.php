@@ -153,9 +153,29 @@ class SaleService
             $shift->save();
 
             AuditService::log(
-                'SALE',
+                'SALE_COMPLETED',
                 'Sale',
-                'Completed sale ' . $sale->receipt_no
+                'Completed sale ' . $sale->receipt_no,
+                $sale->id,
+                null,
+                [
+                    'receipt_no' => $sale->receipt_no,
+                    'grand_total' => $grandTotal,
+                    'payment_method' => $paymentMethod,
+                ],
+                'INFO',
+                [
+                    'module' => 'Sales',
+                    'event_type' => 'FINANCIAL',
+                    'department_id' => $sale->items()->value('department_id'),
+                    'branch_id' => $sale->branch_id,
+                    'reference' => $sale->receipt_no,
+                    'amount' => $grandTotal,
+                    'metadata' => [
+                        'payment_method' => $paymentMethod,
+                        'line_items' => count($cart),
+                    ],
+                ]
             );
 
             return $sale;

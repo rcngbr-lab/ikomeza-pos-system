@@ -368,6 +368,30 @@ public function refund(Request $request, $id)
             'sale_status' => 'REFUNDED',
 
         ]));
+
+        \App\Services\AuditLogService::record([
+            'action' => 'REFUND_CREATED',
+            'module' => 'Refunds',
+            'event_type' => 'FINANCIAL',
+            'model' => Refund::class,
+            'model_id' => $refund->id,
+            'department_id' => $sale->items->first()?->department_id,
+            'branch_id' => $sale->branch_id,
+            'reference' => $sale->receipt_no,
+            'description' => 'Refunded sale ' . $sale->receipt_no,
+            'old_values' => [
+                'sale_status' => 'COMPLETED',
+                'is_refunded' => false,
+            ],
+            'new_values' => [
+                'sale_status' => 'REFUNDED',
+                'is_refunded' => true,
+                'refund_amount' => $sale->grand_total,
+            ],
+            'amount' => $sale->grand_total,
+            'quantity_changed' => $sale->items->sum('quantity'),
+            'severity' => 'WARNING',
+        ]);
         });
     } catch (\Throwable $exception) {
         report($exception);

@@ -2,128 +2,27 @@
 
 namespace App\Services;
 
-use App\Models\AuditLog;
-
 class AuditService
 {
     public static function log(
-
         string $event,
-
         ?string $model = null,
-
         ?string $description = null,
-
         ?int $modelId = null,
-
         ?array $oldValues = null,
-
         ?array $newValues = null,
-
-        ?string $severity = 'INFO'
-
+        ?string $severity = 'INFO',
+        array $context = []
     ): void {
-
-        $user = auth()->user();
-
-        AuditLog::create([
-
-            /*
-            |--------------------------------------------------------------------------
-            | USER
-            |--------------------------------------------------------------------------
-            */
-
-            'user_id' =>
-
-                $user?->id,
-
-            /*
-            |--------------------------------------------------------------------------
-            | BRANCH
-            |--------------------------------------------------------------------------
-            */
-
-            'branch_id' =>
-
-                $user?->branch_id,
-
-            /*
-            |--------------------------------------------------------------------------
-            | EVENT
-            |--------------------------------------------------------------------------
-            */
-
-            'event' =>
-
-                strtoupper($event),
-
-            /*
-            |--------------------------------------------------------------------------
-            | MODEL
-            |--------------------------------------------------------------------------
-            */
-
-            'model' =>
-
-                $model,
-
-            'model_id' =>
-
-                $modelId,
-
-            /*
-            |--------------------------------------------------------------------------
-            | DESCRIPTION
-            |--------------------------------------------------------------------------
-            */
-
-            'description' =>
-
-                $description,
-
-            /*
-            |--------------------------------------------------------------------------
-            | DATA SNAPSHOTS
-            |--------------------------------------------------------------------------
-            */
-
-            'old_values' =>
-
-                $oldValues
-                    ? json_encode($oldValues)
-                    : null,
-
-            'new_values' =>
-
-                $newValues
-                    ? json_encode($newValues)
-                    : null,
-
-            /*
-            |--------------------------------------------------------------------------
-            | SEVERITY
-            |--------------------------------------------------------------------------
-            */
-
-            'severity' =>
-
-                strtoupper($severity),
-
-            /*
-            |--------------------------------------------------------------------------
-            | REQUEST
-            |--------------------------------------------------------------------------
-            */
-
-            'ip_address' =>
-
-                request()->ip(),
-
-            'user_agent' =>
-
-                request()->userAgent(),
-
-        ]);
+        AuditLogService::record(array_merge($context, [
+            'action' => $event,
+            'event' => strtoupper($event),
+            'model' => $model,
+            'model_id' => $modelId,
+            'description' => $description,
+            'old_values' => $oldValues,
+            'new_values' => $newValues,
+            'severity' => $severity,
+        ]));
     }
 }
