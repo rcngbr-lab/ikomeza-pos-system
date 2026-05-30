@@ -14,20 +14,13 @@ class AdminAccountService
         $adminRole = $this->adminRole();
 
         $this->ensureUser(
+            $this->envValue('ADMIN_USERNAME', 'admin'),
             $this->envValue('ADMIN_EMAIL', 'admin@agnesbar.com'),
             $this->envValue('ADMIN_NAME', 'Administrator'),
             $this->adminPassword(),
             $adminRole
         );
 
-        if ($this->envValue('ADMIN_EMAIL', 'admin@agnesbar.com') !== 'admin@agnesbar.com') {
-            $this->ensureUser(
-                'admin@agnesbar.com',
-                'Administrator',
-                'MyStrongPassword123',
-                $adminRole
-            );
-        }
     }
 
     private function adminRole(): Role
@@ -63,18 +56,26 @@ class AdminAccountService
         return $adminRole;
     }
 
-    private function ensureUser(string $email, string $name, string $password, Role $adminRole): void
+    private function ensureUser(string $username, string $email, string $name, string $password, Role $adminRole): void
     {
-        $user = User::whereRaw('LOWER(email) = ?', [strtolower($email)])
+        $username = Str::lower(trim($username));
+
+        $user = User::whereRaw('LOWER(username) = ?', [$username])
+            ->orWhereRaw('LOWER(email) = ?', [strtolower($email)])
             ->first();
 
         if (!$user) {
             $user = new User();
         }
 
+        $emailOwner = User::whereRaw('LOWER(email) = ?', [strtolower($email)])
+            ->when($user->exists, fn ($query) => $query->whereKeyNot($user->id))
+            ->exists();
+
         $user->forceFill([
             'name' => $name,
-            'email' => $email,
+            'username' => $username,
+            'email' => $emailOwner ? ($user->email ?: $username . '@ikomeza.local') : $email,
             'password' => Hash::make($password),
             'email_verified_at' => now(),
             'role' => 'ADMIN',

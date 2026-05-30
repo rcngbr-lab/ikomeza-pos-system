@@ -44,7 +44,7 @@
                 type="search"
                 name="search"
                 value="{{ request('search') }}"
-                placeholder="{{ $canReviewAll ? 'Search shift, staff, email...' : 'Search shift code...' }}"
+                placeholder="{{ $canReviewAll ? 'Search shift, staff, username...' : 'Search shift code...' }}"
                 class="rounded-xl border-slate-200 bg-slate-50 text-sm"
             >
 

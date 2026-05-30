@@ -20,6 +20,7 @@ class DemoAccountService
             !Schema::hasTable('roles')
             || !Schema::hasTable('users')
             || !Schema::hasTable('branches')
+            || !Schema::hasColumn('users', 'username')
         ) {
             return;
         }
@@ -42,6 +43,7 @@ class DemoAccountService
                 ['email' => $demoUser['email']],
                 [
                     'name' => $demoUser['name'],
+                    'username' => $demoUser['username'],
                     'password' => Hash::make(self::PASSWORD),
                     'email_verified_at' => now(),
                     'role' => $role->code ?? $demoUser['role'],
@@ -118,32 +120,38 @@ class DemoAccountService
         return [
             [
                 'name' => 'Demo Manager',
+                'username' => 'manager',
                 'email' => 'manager@agnesbar.com',
                 'role' => 'MANAGER',
             ],
             [
                 'name' => 'Demo Cashier',
+                'username' => 'cashier',
                 'email' => 'cashier@agnesbar.com',
                 'role' => 'CASHIER',
             ],
             [
                 'name' => 'Demo Waiter',
+                'username' => 'waiter',
                 'email' => 'waiter@agnesbar.com',
                 'role' => 'WAITER',
             ],
             [
                 'name' => 'Demo Store Keeper',
+                'username' => 'storekeeper',
                 'email' => 'storekeeper@agnesbar.com',
                 'role' => 'STORE_KEEPER',
             ],
             [
                 'name' => 'Demo Kitchen Chief',
+                'username' => 'kitchen',
                 'email' => 'kitchen@agnesbar.com',
                 'role' => 'KITCHEN_CHIEF',
                 'department' => 'KITCHEN',
             ],
             [
                 'name' => 'Demo Bar Chief',
+                'username' => 'bar',
                 'email' => 'bar@agnesbar.com',
                 'role' => 'BAR_CHIEF',
                 'department' => 'BAR',

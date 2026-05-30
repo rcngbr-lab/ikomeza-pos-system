@@ -15,19 +15,27 @@
         >
     </div>
 
-    {{-- EMAIL --}}
+    {{-- USERNAME --}}
     <div>
         <label class="block mb-2 text-sm font-medium text-gray-700">
-            Email
+            Username
         </label>
 
         <input
-            type="email"
-            name="email"
-            value="{{ old('email', $user->email ?? '') }}"
+            type="text"
+            name="username"
+            value="{{ old('username', $user->username ?? '') }}"
             class="w-full h-12 px-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            placeholder="e.g. eric"
+            autocomplete="off"
+            autocapitalize="none"
+            spellcheck="false"
             required
         >
+
+        <p class="mt-1 text-xs text-gray-500">
+            Used for login. Letters, numbers, dot, dash, and underscore only.
+        </p>
     </div>
 
     {{-- PHONE --}}
@@ -91,6 +99,22 @@
 
             @endforeach
         </select>
+    </div>
+
+    {{-- CONTACT EMAIL --}}
+    <div>
+        <label class="block mb-2 text-sm font-medium text-gray-700">
+            Contact Email
+            <span class="text-gray-400 font-normal">(optional)</span>
+        </label>
+
+        <input
+            type="email"
+            name="email"
+            value="{{ old('email', isset($user) && !str_ends_with(strtolower((string) $user->email), '@ikomeza.local') ? $user->email : '') }}"
+            class="w-full h-12 px-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            placeholder="staff@example.com"
+        >
     </div>
 
     {{-- DEPARTMENT --}}
@@ -166,15 +190,15 @@
             class="w-full h-12 px-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             required
         >
-            <option value="ACTIVE">
+            <option value="ACTIVE" @selected(old('status', $user->status ?? 'ACTIVE') === 'ACTIVE')>
                 ACTIVE
             </option>
 
-            <option value="INACTIVE">
+            <option value="INACTIVE" @selected(old('status', $user->status ?? 'ACTIVE') === 'INACTIVE')>
                 INACTIVE
             </option>
 
-            <option value="SUSPENDED">
+            <option value="SUSPENDED" @selected(old('status', $user->status ?? 'ACTIVE') === 'SUSPENDED')>
                 SUSPENDED
             </option>
         </select>

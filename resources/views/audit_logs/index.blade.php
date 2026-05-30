@@ -128,12 +128,12 @@
                 <option value="">All Staff</option>
                 @foreach($users as $staff)
                     <option value="{{ $staff->id }}" @selected((int) request('user_id') === (int) $staff->id)>
-                        {{ $staff->name }} - {{ $staff->email }}
+                        {{ $staff->name }} - {{ $staff->username ?? $staff->email }}
                     </option>
                 @endforeach
             </select>
 
-            <input name="user_search" value="{{ request('user_search') }}" placeholder="User name or email" class="h-11 rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+            <input name="user_search" value="{{ request('user_search') }}" placeholder="User name or username" class="h-11 rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-indigo-500">
 
             <select name="role" class="h-11 rounded-xl border-slate-200 bg-slate-50 text-sm font-semibold focus:border-indigo-500 focus:ring-indigo-500">
                 <option value="">All Roles</option>
@@ -224,7 +224,7 @@
                             <td class="px-4 py-4 text-sm font-black text-slate-950">#{{ $log->id }}</td>
                             <td class="px-4 py-4">
                                 <p class="text-sm font-black text-slate-950">{{ $log->user->name ?? 'Unknown' }}</p>
-                                <p class="text-xs text-slate-500">{{ $log->user->email ?? 'System event' }}</p>
+                                <p class="text-xs text-slate-500">{{ $log->user->username ?? $log->user->email ?? 'System event' }}</p>
                             </td>
                             <td class="px-4 py-4 text-sm font-semibold text-slate-600">{{ $log->role_name ?: '-' }}</td>
                             <td class="px-4 py-4">

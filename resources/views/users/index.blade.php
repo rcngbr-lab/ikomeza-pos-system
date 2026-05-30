@@ -42,7 +42,7 @@
                         </th>
 
                         <th class="px-4 py-4 text-left text-sm font-semibold">
-                            Email
+                            Username
                         </th>
 
                         <th class="px-4 py-4 text-left text-sm font-semibold">
@@ -50,11 +50,11 @@
                         </th>
 
                         <th class="px-4 py-4 text-left text-sm font-semibold">
-                            Branch
+                            Department
                         </th>
 
                         <th class="px-4 py-4 text-left text-sm font-semibold">
-                            Department
+                            Branch
                         </th>
 
                         <th class="px-4 py-4 text-left text-sm font-semibold">
@@ -76,41 +76,36 @@
                         <tr class="border-t">
 
                             <td class="px-4 py-4">
-                                {{ $user->name }}
+                                <div class="font-semibold text-slate-900">
+                                    {{ $user->name }}
+                                </div>
+                                <div class="text-xs text-slate-500">
+                                    {{ !str_ends_with(strtolower((string) $user->email), '@ikomeza.local') ? $user->email : 'No contact email' }}
+                                </div>
                             </td>
 
                             <td class="px-4 py-4">
-
                                 <span class="px-3 py-1 text-xs rounded-full bg-indigo-100 text-indigo-700">
-
-                                    {{ $user->department->name ?? 'All' }}
-
+                                    {{ $user->username ?? '-' }}
                                 </span>
-
                             </td>
 
                             <td class="px-4 py-4">
-                                {{ $user->email }}
-                            </td>
-
-                            <td class="px-4 py-4">
-
                                 <span class="px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-700">
-
-                                    {{ $user->roles->first()?->name }}
-
+                                    {{ $user->roles->first()?->name ?? $user->roleLabel() }}
                                 </span>
-
                             </td>
 
                             <td class="px-4 py-4">
-
                                 <span class="px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700">
-
-                                    {{ $user->branch->name ?? 'N/A' }}
-
+                                    {{ $user->department->name ?? 'All' }}
                                 </span>
+                            </td>
 
+                            <td class="px-4 py-4">
+                                <span class="px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700">
+                                    {{ $user->branch->name ?? 'N/A' }}
+                                </span>
                             </td>
 
                             <td class="px-4 py-4">

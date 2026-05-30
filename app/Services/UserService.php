@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\Role;
+use Illuminate\Support\Str;
 
 class UserService
 {
@@ -23,7 +24,9 @@ class UserService
 
             'name' => $data['name'],
 
-            'email' => $data['email'],
+            'username' => $data['username'],
+
+            'email' => $this->contactEmail($data),
 
             'phone' => $data['phone'] ?? null,
 
@@ -67,7 +70,9 @@ class UserService
 
             'name' => $data['name'],
 
-            'email' => $data['email'],
+            'username' => $data['username'],
+
+            'email' => $this->contactEmail($data, $user),
 
             'phone' => $data['phone'] ?? null,
 
@@ -90,5 +95,24 @@ class UserService
         ]);
 
         return $user;
+    }
+
+    private function contactEmail(array $data, ?User $user = null): string
+    {
+        $email = trim((string) ($data['email'] ?? ''));
+
+        if ($email !== '') {
+            return Str::lower($email);
+        }
+
+        if (
+            $user
+            && $user->email
+            && !str_ends_with(Str::lower($user->email), '@ikomeza.local')
+        ) {
+            return $user->email;
+        }
+
+        return $data['username'] . '@ikomeza.local';
     }
 }

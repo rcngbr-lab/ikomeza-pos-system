@@ -156,7 +156,7 @@ class ShiftController extends Controller
 
         $summary = $this->shiftSummary($summaryQuery);
         $users = $canReviewAll
-            ? User::query()->orderBy('name')->get(['id', 'name', 'email', 'role'])
+            ? User::query()->orderBy('name')->get(['id', 'name', 'username', 'email', 'role'])
             : collect();
 
         return view('shifts.history', [
@@ -232,6 +232,7 @@ class ShiftController extends Controller
                     ->orWhere('id', $search)
                     ->orWhereHas('user', function ($user) use ($search) {
                         $user->where('name', 'like', '%' . $search . '%')
+                            ->orWhere('username', 'like', '%' . $search . '%')
                             ->orWhere('email', 'like', '%' . $search . '%');
                     });
             });

@@ -36,9 +36,9 @@ class AuthenticatedSessionController extends Controller
                 'action' => 'LOGIN_FAILED',
                 'module' => 'Security',
                 'event_type' => 'SECURITY',
-                'description' => 'Failed login attempt for ' . $request->input('email'),
+                'description' => 'Failed login attempt for username ' . $request->input('username'),
                 'metadata' => [
-                    'email' => $request->input('email'),
+                    'username' => $request->input('username'),
                 ],
                 'severity' => 'SECURITY',
             ]);

@@ -206,6 +206,7 @@ class AuditLogController extends Controller
                     ->orWhere('ip_address', 'like', '%' . $search . '%')
                     ->orWhereHas('user', function ($userQuery) use ($search) {
                         $userQuery->where('name', 'like', '%' . $search . '%')
+                            ->orWhere('username', 'like', '%' . $search . '%')
                             ->orWhere('email', 'like', '%' . $search . '%');
                     });
             });
@@ -229,6 +230,7 @@ class AuditLogController extends Controller
 
             $query->whereHas('user', function ($userQuery) use ($search) {
                 $userQuery->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('username', 'like', '%' . $search . '%')
                     ->orWhere('email', 'like', '%' . $search . '%');
             });
         }
@@ -371,7 +373,7 @@ class AuditLogController extends Controller
                 })
             )
             ->orderBy('name')
-            ->get(['id', 'name', 'email', 'role']);
+            ->get(['id', 'name', 'username', 'email', 'role']);
     }
 
     private function authorizeAccess(Request $request): void
