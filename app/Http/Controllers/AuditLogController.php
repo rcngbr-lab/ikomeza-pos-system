@@ -367,7 +367,7 @@ class AuditLogController extends Controller
                 $user->hasOperationalRole('KITCHEN_MANAGER', 'KITCHEN_CHIEF', 'BAR_MANAGER', 'BAR_CHIEF', 'BARTENDER', 'STORE_KEEPER') && $user->department_id,
                 fn ($query) => $query->where(function ($userQuery) use ($user) {
                     $userQuery->where('department_id', $user->department_id)
-                        ->orWhereKey($user->id);
+                        ->orWhere('id', $user->id);
                 })
             )
             ->orderBy('name')
