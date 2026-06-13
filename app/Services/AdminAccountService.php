@@ -85,7 +85,9 @@ class AdminAccountService
             'active' => true,
         ];
 
+        $hasConfiguredPassword = !$this->isPlaceholderPassword($password);
         $shouldSetPassword = $isNewUser
+            || ($hasConfiguredPassword && app()->environment('production'))
             || filter_var(env('ADMIN_RESET_PASSWORD', false), FILTER_VALIDATE_BOOL)
             || $this->shouldReplaceDefaultPassword($user, $password);
 
