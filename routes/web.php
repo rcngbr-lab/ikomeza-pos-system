@@ -24,6 +24,11 @@ use App\Http\Controllers\StockRequisitionController;
 use App\Http\Controllers\StoreManagementController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\StockCountController;
+use App\Http\Controllers\OrderTicketController;
+use App\Http\Controllers\TableController;
+use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\CustomerController;
 
 /*
 |--------------------------------------------------------------------------
@@ -90,6 +95,18 @@ Route::middleware([
         'categories',
         CategoryController::class
     )->middleware('admin.manager');
+
+    Route::resource(
+        'customers',
+        CustomerController::class
+    )->only(['index', 'store', 'update'])
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
+
+    Route::post(
+        '/customers/{customer}/payment',
+        [CustomerController::class, 'payment']
+    )->name('customers.payment')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER');
 
     /*
     |--------------------------------------------------------------------------
@@ -199,6 +216,36 @@ Route::middleware([
     )->name('pos.receipt')
     ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER,WAITER,SERVER');
 
+    Route::get(
+        '/tickets',
+        [OrderTicketController::class, 'index']
+    )->name('tickets.index')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER,WAITER,SERVER');
+
+    Route::post(
+        '/tickets/{ticket}/status',
+        [OrderTicketController::class, 'updateStatus']
+    )->name('tickets.status')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER');
+
+    Route::get(
+        '/tables',
+        [TableController::class, 'index']
+    )->name('tables.index')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,WAITER,SERVER');
+
+    Route::post(
+        '/tables',
+        [TableController::class, 'store']
+    )->name('tables.store')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER');
+
+    Route::post(
+        '/tables/{table}/status',
+        [TableController::class, 'updateStatus']
+    )->name('tables.status')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,WAITER,SERVER');
+
     /*
     |--------------------------------------------------------------------------
     | CART ROUTE ALIASES
@@ -229,25 +276,25 @@ Route::middleware([
         '/inventory',
         [InventoryController::class, 'index']
     )->name('inventory.index')
-    ->middleware('admin.manager');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF');
 
     Route::post(
         '/inventory/stock-in',
         [InventoryController::class, 'stockIn']
     )->name('inventory.stockin')
-    ->middleware('admin.manager');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF');
 
     Route::post(
         '/inventory/damage',
         [InventoryController::class, 'damage']
     )->name('inventory.damage')
-    ->middleware('admin.manager');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF');
 
     Route::get(
         '/inventory/print-history',
         [InventoryController::class, 'printHistory']
     )->name('inventory.print')
-    ->middleware('admin.manager');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF');
 
     /*
     |--------------------------------------------------------------------------
@@ -257,7 +304,7 @@ Route::middleware([
 
     Route::prefix('store')
         ->name('store.')
-        ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER')
+        ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF')
         ->group(function () {
             Route::get('/', [StoreManagementController::class, 'dashboard'])->name('dashboard');
             Route::get('/suppliers', [StoreManagementController::class, 'suppliers'])->name('suppliers');
@@ -269,6 +316,7 @@ Route::middleware([
             Route::get('/issues', [StoreManagementController::class, 'issues'])->name('issues');
             Route::post('/issues', [StoreManagementController::class, 'storeIssue'])->name('issues.store');
             Route::post('/issues/{issue}/approve', [StoreManagementController::class, 'approveIssue'])->name('issues.approve');
+            Route::post('/issues/{issue}/receive', [StoreManagementController::class, 'receiveIssue'])->name('issues.receive');
             Route::get('/damages', [StoreManagementController::class, 'damages'])->name('damages');
             Route::post('/damages', [StoreManagementController::class, 'storeDamage'])->name('damages.store');
             Route::post('/damages/{damage}/approve', [StoreManagementController::class, 'approveDamage'])->name('damages.approve');
@@ -276,6 +324,9 @@ Route::middleware([
             Route::post('/returns', [StoreManagementController::class, 'storeReturn'])->name('returns.store');
             Route::post('/returns/{return}/approve', [StoreManagementController::class, 'approveReturn'])->name('returns.approve');
             Route::get('/movements', [StoreManagementController::class, 'movements'])->name('movements');
+            Route::get('/stock-counts', [StockCountController::class, 'index'])->name('stock-counts');
+            Route::post('/stock-counts', [StockCountController::class, 'store'])->name('stock-counts.store');
+            Route::post('/stock-counts/{stockCount}/approve', [StockCountController::class, 'approve'])->name('stock-counts.approve');
         });
 
     /*
@@ -288,25 +339,31 @@ Route::middleware([
         '/requisitions',
         [StockRequisitionController::class, 'index']
     )->name('requisitions.index')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER,CASHIER,WAITER,SERVER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF');
 
     Route::post(
         '/requisitions',
         [StockRequisitionController::class, 'store']
     )->name('requisitions.store')
-    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER,CASHIER,WAITER,SERVER');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF');
 
     Route::post(
         '/requisitions/{requisition}/approve',
         [StockRequisitionController::class, 'approve']
     )->name('requisitions.approve')
-    ->middleware('admin.manager');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER');
+
+    Route::post(
+        '/requisitions/{requisition}/process',
+        [StockRequisitionController::class, 'process']
+    )->name('requisitions.process')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER');
 
     Route::post(
         '/requisitions/{requisition}/reject',
         [StockRequisitionController::class, 'reject']
     )->name('requisitions.reject')
-    ->middleware('admin.manager');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER');
 
     /*
     |--------------------------------------------------------------------------
@@ -349,7 +406,7 @@ Route::middleware([
         '/reports',
         [ReportController::class, 'index']
     )->name('reports.index')
-    ->middleware('admin.manager');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF');
 
     Route::get(
         '/my-report',
@@ -367,6 +424,18 @@ Route::middleware([
         '/refunds',
         [RefundController::class, 'index']
     )->name('refunds.index')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER');
+
+    Route::post(
+        '/refund-requests/{refundRequest}/approve',
+        [RefundController::class, 'approve']
+    )->name('refund.requests.approve')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER');
+
+    Route::post(
+        '/refund-requests/{refundRequest}/reject',
+        [RefundController::class, 'reject']
+    )->name('refund.requests.reject')
     ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER');
 
     /*
@@ -427,7 +496,7 @@ Route::middleware([
         '/stock-movements',
         [StockMovementController::class, 'index']
     )->name('stock.movements')
-    ->middleware('admin.manager');
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF');
 
     /*
     |--------------------------------------------------------------------------
@@ -458,6 +527,18 @@ Route::middleware([
         [AuditLogController::class, 'show']
     )->name('audit.logs.show')
     ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER,CASHIER,WAITER,SERVER');
+
+    Route::get(
+        '/settings',
+        [SettingsController::class, 'index']
+    )->name('settings.index')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR');
+
+    Route::post(
+        '/settings',
+        [SettingsController::class, 'update']
+    )->name('settings.update')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR');
 
 });
 

@@ -273,7 +273,7 @@
             </td>
 
             <td class="right">
-                {{ $sale->payment_method }}
+                {{ $sale->paymentMethodLabel() }} / {{ $sale->payment_status }}
             </td>
         </tr>
 
@@ -363,6 +363,37 @@
         <table>
 
             <tr>
+                <td>
+                    Subtotal
+                </td>
+                <td class="right">
+                    {{ number_format($sale->subtotal) }} Frw
+                </td>
+            </tr>
+
+            @if((float) $sale->discount > 0)
+                <tr>
+                    <td>
+                        Discount
+                    </td>
+                    <td class="right">
+                        -{{ number_format($sale->discount) }} Frw
+                    </td>
+                </tr>
+            @endif
+
+            @if((float) $sale->tax > 0)
+                <tr>
+                    <td>
+                        VAT {{ number_format($sale->vat_rate, 1) }}%
+                    </td>
+                    <td class="right">
+                        {{ number_format($sale->tax) }} Frw
+                    </td>
+                </tr>
+            @endif
+
+            <tr>
 
                 <td class="bold">
                     Total
@@ -393,6 +424,24 @@
             </strong>
 
         </div>
+
+        @if((float) $sale->credit_due > 0)
+            <div class="payment">
+                Credit Due:
+                <strong>
+                    {{ number_format($sale->credit_due) }} Frw
+                </strong>
+            </div>
+        @endif
+
+        @if($sale->payments->count())
+            <div class="payment">
+                @foreach($sale->payments as $payment)
+                    {{ \App\Models\Sale::PAYMENT_METHOD_LABELS[$payment->method] ?? $payment->method }}:
+                    <strong>{{ number_format($payment->amount) }} Frw</strong><br>
+                @endforeach
+            </div>
+        @endif
 
     </div>
 

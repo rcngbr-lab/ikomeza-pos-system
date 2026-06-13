@@ -245,11 +245,14 @@ class ShiftController extends Controller
 
     private function applyShiftDateFilter($query, Request $request): void
     {
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween('opened_at', [
-                $request->start_date . ' 00:00:00',
-                $request->end_date . ' 23:59:59',
-            ]);
+        if ($request->filled('start_date') || $request->filled('end_date')) {
+            if ($request->filled('start_date')) {
+                $query->where('opened_at', '>=', $request->start_date . ' 00:00:00');
+            }
+
+            if ($request->filled('end_date')) {
+                $query->where('opened_at', '<=', $request->end_date . ' 23:59:59');
+            }
 
             return;
         }
@@ -286,6 +289,14 @@ class ShiftController extends Controller
     {
         if ($request->filled('start_date') && $request->filled('end_date')) {
             return $request->start_date . ' to ' . $request->end_date;
+        }
+
+        if ($request->filled('start_date')) {
+            return 'From ' . $request->start_date;
+        }
+
+        if ($request->filled('end_date')) {
+            return 'Until ' . $request->end_date;
         }
 
         return match ($request->input('filter')) {

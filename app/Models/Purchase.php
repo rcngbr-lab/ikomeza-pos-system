@@ -37,7 +37,10 @@ class Purchase extends Model
         'tax',
         'discount',
         'total_amount',
+        'paid_amount',
+        'balance_due',
         'payment_status',
+        'accounting_status',
         'status',
         'notes',
     ];
@@ -51,6 +54,8 @@ class Purchase extends Model
         'tax' => 'decimal:2',
         'discount' => 'decimal:2',
         'total_amount' => 'decimal:2',
+        'paid_amount' => 'decimal:2',
+        'balance_due' => 'decimal:2',
     ];
 
     public function supplier()

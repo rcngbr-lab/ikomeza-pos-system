@@ -17,6 +17,7 @@ use App\Models\StoreIssueItem;
 use App\Models\StoreStock;
 use App\Models\Supplier;
 use App\Services\AuditLogService;
+use App\Services\AccountingService;
 use App\Services\DepartmentAccessService;
 use App\Services\StoreStockService;
 use Illuminate\Http\Request;
@@ -250,16 +251,38 @@ class StoreManagementController extends Controller
 
         $store = Store::findOrFail($validated['store_id']);
         $product = Product::with('department')->findOrFail($validated['product_id']);
+        $requisition = !empty($validated['requisition_id'])
+            ? StockRequisition::findOrFail($validated['requisition_id'])
+            : null;
 
         $this->authorizeStore($request, $store);
         $departmentAccess->authorize($request->user(), $product->department_id);
+
+        if ($requisition) {
+            if ($requisition->status !== StockRequisition::STATUS_APPROVED) {
+                return back()->with('error', 'Only approved requisitions can be converted into purchases.');
+            }
+
+            if ((int) $requisition->product_id !== (int) $product->id) {
+                return back()->with('error', 'Selected product does not match the approved requisition.');
+            }
+
+            if (
+                !$request->user()->hasOperationalRole('ADMIN', 'ADMINISTRATOR')
+                && (int) $requisition->requester_id === (int) $request->user()->id
+            ) {
+                return back()->with('error', 'Separation of duties: requester cannot convert their own requisition into purchase.');
+            }
+        }
 
         $subtotal = (float) $validated['quantity_ordered'] * (float) $validated['unit_cost'];
         $tax = (float) ($validated['tax'] ?? 0);
         $discount = (float) ($validated['discount'] ?? 0);
         $total = $subtotal + $tax - $discount;
+        $paidAmount = $validated['payment_status'] === Purchase::PAYMENT_PAID ? $total : 0;
+        $balanceDue = max($total - $paidAmount, 0);
 
-        $purchase = DB::transaction(function () use ($request, $validated, $product, $store, $subtotal, $tax, $discount, $total) {
+        $purchase = DB::transaction(function () use ($request, $validated, $product, $store, $requisition, $subtotal, $tax, $discount, $total, $paidAmount, $balanceDue) {
             $purchase = Purchase::create([
                 'purchase_number' => $this->nextNumber('PO'),
                 'supplier_id' => $validated['supplier_id'],
@@ -274,19 +297,44 @@ class StoreManagementController extends Controller
                 'tax' => $tax,
                 'discount' => $discount,
                 'total_amount' => $total,
+                'paid_amount' => $paidAmount,
+                'balance_due' => $balanceDue,
                 'payment_status' => $validated['payment_status'],
+                'accounting_status' => $balanceDue > 0 ? 'POSTED_AP' : 'PAID',
                 'status' => Purchase::STATUS_PENDING_APPROVAL,
                 'notes' => $validated['notes'] ?? null,
             ]);
+
+            if ($requisition) {
+                $requisition->update([
+                    'status' => StockRequisition::STATUS_CONVERTED_TO_PURCHASE,
+                ]);
+
+                AuditLogService::record([
+                    'action' => 'REQUISITION_CONVERTED_TO_PURCHASE',
+                    'module' => 'Requisitions',
+                    'model' => $requisition,
+                    'department_id' => $requisition->department_id,
+                    'reference' => 'RQ-' . str_pad((string) $requisition->id, 6, '0', STR_PAD_LEFT),
+                    'description' => 'Converted approved requisition into purchase ' . $purchase->purchase_number . '.',
+                    'old_values' => ['status' => StockRequisition::STATUS_APPROVED],
+                    'new_values' => ['status' => StockRequisition::STATUS_CONVERTED_TO_PURCHASE, 'purchase_number' => $purchase->purchase_number],
+                ]);
+            }
 
             PurchaseItem::create([
                 'purchase_id' => $purchase->id,
                 'product_id' => $product->id,
                 'quantity_ordered' => $validated['quantity_ordered'],
                 'quantity_received' => 0,
+                'quantity_difference' => $validated['quantity_ordered'],
                 'unit_cost' => $validated['unit_cost'],
                 'total_cost' => $subtotal,
             ]);
+
+            if ($balanceDue > 0) {
+                app(AccountingService::class)->postPurchaseLiability($purchase);
+            }
 
             AuditLogService::record([
                 'action' => 'PURCHASE_CREATED',
@@ -389,6 +437,7 @@ class StoreManagementController extends Controller
                 $item->update([
                     'quantity_received' => (float) $item->quantity_received + $received,
                     'damaged_quantity' => (float) $item->damaged_quantity + $damaged,
+                    'quantity_difference' => (float) $item->quantity_ordered - ((float) $item->quantity_received + $received),
                     'batch_number' => $request->input('batch_number.' . $item->id) ?: $item->batch_number,
                     'expiry_date' => $request->input('expiry_date.' . $item->id) ?: $item->expiry_date,
                     'notes' => $request->input('receiving_note'),
@@ -421,7 +470,7 @@ class StoreManagementController extends Controller
                 }
 
                 if ($damaged > 0) {
-                    StockDamage::create([
+                    $damage = StockDamage::create([
                         'damage_number' => $this->nextNumber('DMG'),
                         'product_id' => $item->product_id,
                         'store_id' => $purchase->store_id,
@@ -430,12 +479,27 @@ class StoreManagementController extends Controller
                         'reason' => 'Damaged at supplier delivery',
                         'notes' => $request->input('receiving_note'),
                         'recorded_by' => $request->user()->id,
-                        'approved_by' => $request->user()->id,
-                        'approved_at' => now(),
-                        'status' => StockDamage::STATUS_APPROVED,
+                        'status' => StockDamage::STATUS_PENDING,
                     ]);
 
                     $damagedUnits += $damaged;
+
+                    AuditLogService::record([
+                        'action' => 'DELIVERY_DAMAGE_RECORDED',
+                        'module' => 'Inventory',
+                        'model' => $damage,
+                        'department_id' => $item->product->department_id,
+                        'reference' => $purchase->purchase_number,
+                        'description' => 'Recorded damaged supplier delivery units for ' . $item->product->name . '. Damage is pending manager/admin approval.',
+                        'new_values' => [
+                            'product_id' => $item->product_id,
+                            'quantity' => $damaged,
+                            'status' => StockDamage::STATUS_PENDING,
+                            'purchase_id' => $purchase->id,
+                        ],
+                        'quantity_changed' => -abs($damaged),
+                        'severity' => 'WARNING',
+                    ]);
                 }
             }
 
@@ -544,7 +608,7 @@ class StoreManagementController extends Controller
         return back()->with('success', 'Store issue requested for approval.');
     }
 
-    public function approveIssue(Request $request, StoreIssue $issue, StoreStockService $storeStockService)
+    public function approveIssue(Request $request, StoreIssue $issue)
     {
         $this->authorizeApproval($request);
 
@@ -555,6 +619,43 @@ class StoreManagementController extends Controller
         if ($issue->status !== StoreIssue::STATUS_PENDING_APPROVAL) {
             return back()->with('error', 'Only pending issues can be approved.');
         }
+
+        DB::transaction(function () use ($request, $issue) {
+            $issue->update([
+                'approved_by' => $request->user()->id,
+                'status' => StoreIssue::STATUS_APPROVED,
+            ]);
+
+            AuditLogService::record([
+                'action' => 'STORE_ISSUE_APPROVED',
+                'module' => 'Inventory',
+                'model' => $issue,
+                'department_id' => $issue->department_id,
+                'reference' => $issue->issue_number,
+                'description' => 'Approved store issue ' . $issue->issue_number . '. Stock was not transferred until receiving confirmation.',
+                'quantity_changed' => $issue->items->sum('quantity_requested'),
+            ]);
+        });
+
+        return back()->with('success', 'Store issue approved. Stock still awaits issue/receiving confirmation.');
+    }
+
+    public function receiveIssue(Request $request, StoreIssue $issue, StoreStockService $storeStockService)
+    {
+        $this->authorizeStoreAccess($request);
+
+        if ($issue->status !== StoreIssue::STATUS_APPROVED) {
+            return back()->with('error', 'Only approved issues can be issued and received.');
+        }
+
+        if (
+            !$request->user()->hasOperationalRole('ADMIN', 'ADMINISTRATOR')
+            && in_array((int) $request->user()->id, [(int) $issue->issued_by, (int) $issue->approved_by], true)
+        ) {
+            return back()->with('error', 'Separation of duties: requester/approver cannot receive the same store issue.');
+        }
+
+        app(DepartmentAccessService::class)->authorize($request->user(), $issue->department_id);
 
         DB::transaction(function () use ($request, $issue, $storeStockService) {
             $issue->load(['items.product', 'fromStore', 'toStore']);
@@ -568,7 +669,7 @@ class StoreManagementController extends Controller
                     user: $request->user(),
                     referenceType: StoreIssue::class,
                     referenceId: $issue->id,
-                    note: 'Approved store issue ' . $issue->issue_number
+                    note: 'Issued and received store issue ' . $issue->issue_number
                 );
 
                 $item->update([
@@ -578,7 +679,6 @@ class StoreManagementController extends Controller
             }
 
             $issue->update([
-                'approved_by' => $request->user()->id,
                 'received_by' => $request->user()->id,
                 'issue_date' => now(),
                 'received_date' => now(),
@@ -586,17 +686,17 @@ class StoreManagementController extends Controller
             ]);
 
             AuditLogService::record([
-                'action' => 'STORE_ISSUE_APPROVED',
+                'action' => 'STORE_ISSUE_RECEIVED',
                 'module' => 'Inventory',
                 'model' => $issue,
                 'department_id' => $issue->department_id,
                 'reference' => $issue->issue_number,
-                'description' => 'Approved and transferred stock for issue ' . $issue->issue_number . '.',
+                'description' => 'Issued and received stock for store issue ' . $issue->issue_number . '.',
                 'quantity_changed' => $issue->items->sum('quantity_requested'),
             ]);
         });
 
-        return back()->with('success', 'Store issue approved and transferred.');
+        return back()->with('success', 'Store issue received and stock transferred.');
     }
 
     public function damages(Request $request, DepartmentAccessService $departmentAccess)
@@ -1052,8 +1152,7 @@ class StoreManagementController extends Controller
                 'KITCHEN_MANAGER',
                 'KITCHEN_CHIEF',
                 'BAR_MANAGER',
-                'BAR_CHIEF',
-                'BARTENDER'
+                'BAR_CHIEF'
             ),
             403
         );

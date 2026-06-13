@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\Customer;
 use App\Models\Department;
 use App\Models\Product;
+use App\Models\RestaurantTable;
 use App\Models\Sale;
 use App\Models\Shift;
 use App\Services\CategoryCatalogService;
 use App\Services\SaleService;
+use App\Services\TaxService;
 use Illuminate\Http\Request;
 
 class PosController extends Controller
@@ -42,11 +45,22 @@ class PosController extends Controller
             ->get();
         $cart = session()->get('cart', []);
         $total = $this->cartTotal($cart);
+        $taxPreview = app(TaxService::class)->saleTotals($total, (float) old('discount', 0));
         $paymentMethods = Sale::PAYMENT_METHOD_LABELS;
+        $customers = Customer::query()
+            ->where('status', Customer::STATUS_ACTIVE)
+            ->orderBy('name')
+            ->take(80)
+            ->get();
+        $tables = RestaurantTable::query()
+            ->whereIn('status', ['AVAILABLE', 'OCCUPIED'])
+            ->orderBy('section')
+            ->orderBy('name')
+            ->get();
 
         return view(
             'pos.index',
-            compact('products', 'categories', 'departments', 'cart', 'total', 'shift', 'paymentMethods')
+            compact('products', 'categories', 'departments', 'cart', 'total', 'taxPreview', 'shift', 'paymentMethods', 'customers', 'tables')
         );
     }
 
@@ -165,9 +179,17 @@ class PosController extends Controller
         $request->merge(['payment_method' => $paymentMethod]);
 
         $request->validate([
-            'payment_method' => ['required', 'in:' . implode(',', Sale::PAYMENT_METHODS)],
+            'payment_method' => ['nullable', 'in:' . implode(',', Sale::PAYMENT_METHODS)],
             'amount_paid' => ['nullable', 'numeric', 'min:0'],
+            'payments' => ['nullable', 'array'],
+            'payments.*.method' => ['required_with:payments', 'in:' . implode(',', Sale::PAYMENT_METHODS)],
+            'payments.*.amount' => ['nullable', 'numeric', 'min:0'],
+            'payments.*.reference' => ['nullable', 'string', 'max:120'],
+            'customer_id' => ['nullable', 'exists:customers,id'],
             'customer_name' => ['nullable', 'string', 'max:120'],
+            'table_id' => ['nullable', 'exists:restaurant_tables,id'],
+            'discount' => ['nullable', 'numeric', 'min:0'],
+            'discount_reason' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
@@ -181,7 +203,12 @@ class PosController extends Controller
                 $paymentMethod,
                 $amountPaid,
                 $request->input('customer_name'),
-                $request->input('notes')
+                $request->input('notes'),
+                $request->integer('customer_id') ?: null,
+                $request->integer('table_id') ?: null,
+                $request->input('payments', []),
+                (float) $request->input('discount', 0),
+                $request->input('discount_reason')
             );
 
             session()->forget('cart');
@@ -198,7 +225,7 @@ class PosController extends Controller
 
     public function receipt($id)
     {
-        $sale = Sale::with('items.product.department', 'items.department', 'user', 'shift')->findOrFail($id);
+        $sale = Sale::with('items.product.department', 'items.department', 'user', 'shift', 'payments', 'customer', 'table')->findOrFail($id);
 
         if (
             auth()->user()->hasOperationalRole('CASHIER', 'WAITER', 'SERVER')

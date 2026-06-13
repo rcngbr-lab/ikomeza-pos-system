@@ -37,11 +37,7 @@
         'KITCHEN_MANAGER',
         'KITCHEN_CHIEF',
         'BAR_MANAGER',
-        'BAR_CHIEF',
-        'BARTENDER',
-        'CASHIER',
-        'WAITER',
-        'SERVER'
+        'BAR_CHIEF'
     );
 
     $canAuditLogs = $user->hasOperationalRole(
@@ -67,8 +63,20 @@
         $links[] = ['label' => 'POS Terminal', 'route' => 'pos.index', 'mark' => 'POS'];
     }
 
+    if ($user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER', 'WAITER', 'SERVER')) {
+        $links[] = ['label' => 'Tables', 'route' => 'tables.index', 'active' => 'tables.*', 'mark' => 'TB'];
+    }
+
+    if ($user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER', 'KITCHEN_MANAGER', 'KITCHEN_CHIEF', 'BAR_MANAGER', 'BAR_CHIEF', 'BARTENDER', 'WAITER', 'SERVER')) {
+        $links[] = ['label' => 'Tickets', 'route' => 'tickets.index', 'active' => 'tickets.*', 'mark' => 'TK'];
+    }
+
     if ($canViewSales) {
         $links[] = ['label' => 'Sales', 'route' => 'sales.index', 'mark' => 'SA'];
+    }
+
+    if ($user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER', 'CASHIER', 'WAITER', 'SERVER')) {
+        $links[] = ['label' => 'Customers', 'route' => 'customers.index', 'active' => 'customers.*', 'mark' => 'CU'];
     }
 
     if ($canShift) {
@@ -87,17 +95,24 @@
         'KITCHEN_MANAGER',
         'KITCHEN_CHIEF',
         'BAR_MANAGER',
-        'BAR_CHIEF',
-        'BARTENDER'
+        'BAR_CHIEF'
     );
+
+    $canCatalog = $user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER');
 
     if ($canOperate) {
         $links = array_merge($links, [
             ['label' => 'Store Control', 'route' => 'store.dashboard', 'active' => 'store.*', 'mark' => 'ST'],
+            ['label' => 'Stock Counts', 'route' => 'store.stock-counts', 'active' => 'store.stock-counts*', 'mark' => 'SC'],
             ['label' => 'Inventory', 'route' => 'inventory.index', 'mark' => 'IN'],
+            ['label' => 'Reports', 'route' => 'reports.index', 'mark' => 'RP'],
+        ]);
+    }
+
+    if ($canCatalog) {
+        $links = array_merge($links, [
             ['label' => 'Products', 'route' => 'products.index', 'active' => 'products.*', 'mark' => 'PR'],
             ['label' => 'Categories', 'route' => 'categories.index', 'active' => 'categories.*', 'mark' => 'CT'],
-            ['label' => 'Reports', 'route' => 'reports.index', 'mark' => 'RP'],
         ]);
     }
 
@@ -112,6 +127,7 @@
         $links = array_merge($links, [
             ['label' => 'Roles', 'route' => 'roles.index', 'mark' => 'RO'],
             ['label' => 'Permissions', 'route' => 'permissions.index', 'mark' => 'PM'],
+            ['label' => 'Settings', 'route' => 'settings.index', 'active' => 'settings.*', 'mark' => 'SE'],
         ]);
     }
 

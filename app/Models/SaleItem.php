@@ -12,7 +12,13 @@ class SaleItem extends Model
 
         'product_id',
 
+        'product_name',
+
+        'product_code',
+
         'department_id',
+
+        'department_name',
 
         'quantity',
 
@@ -26,6 +32,12 @@ class SaleItem extends Model
 
         'tax',
 
+        'taxable_amount',
+
+        'vat_rate',
+
+        'vat_amount',
+
         'subtotal',
 
         'total',
@@ -33,6 +45,23 @@ class SaleItem extends Model
         'profit',
 
         'status',
+
+        'ticket_status',
+    ];
+
+    protected $casts = [
+        'quantity' => 'decimal:3',
+        'price' => 'decimal:2',
+        'unit_price' => 'decimal:2',
+        'cost_price' => 'decimal:2',
+        'discount' => 'decimal:2',
+        'tax' => 'decimal:2',
+        'taxable_amount' => 'decimal:2',
+        'vat_rate' => 'decimal:3',
+        'vat_amount' => 'decimal:2',
+        'subtotal' => 'decimal:2',
+        'total' => 'decimal:2',
+        'profit' => 'decimal:2',
     ];
 
     /*

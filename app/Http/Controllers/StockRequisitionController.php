@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\Stock;
-use App\Models\StockMovement;
 use App\Models\StockRequisition;
 use App\Services\AuditLogService;
 use App\Services\DepartmentAccessService;
+use App\Services\StoreStockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -24,6 +24,7 @@ class StockRequisitionController extends Controller
 
         $departments = $departmentAccess->visibleDepartments($user);
         $canApprove = $this->canApproveRequisitions($user);
+        $canProcess = $this->canProcessRequisitions($user);
 
         $requisitions = StockRequisition::with([
             'product.department',
@@ -68,7 +69,8 @@ class StockRequisitionController extends Controller
             'departments',
             'selectedDepartmentId',
             'summary',
-            'canApprove'
+            'canApprove',
+            'canProcess'
         ));
     }
 
@@ -135,8 +137,6 @@ class StockRequisitionController extends Controller
                     throw new \RuntimeException('This requisition has already been processed.');
                 }
 
-                $this->applyApprovedStockChange($request, $requisition);
-
                 $requisition->update([
                     'status' => StockRequisition::STATUS_APPROVED,
                     'approver_id' => $request->user()->id,
@@ -152,7 +152,7 @@ class StockRequisitionController extends Controller
                     'department_id' => $requisition->department_id,
                     'branch_id' => $request->user()->branch_id,
                     'reference' => 'RQ-' . str_pad((string) $requisition->id, 6, '0', STR_PAD_LEFT),
-                    'description' => 'Approved requisition #' . $requisition->id . ' and updated stock.',
+                    'description' => 'Approved requisition #' . $requisition->id . '. Stock was not changed; receiving, store issue, or damage approval must complete the inventory movement.',
                     'old_values' => ['status' => StockRequisition::STATUS_PENDING],
                     'new_values' => [
                         'status' => StockRequisition::STATUS_APPROVED,
@@ -165,7 +165,143 @@ class StockRequisitionController extends Controller
             return back()->with('error', $exception->getMessage());
         }
 
-        return back()->with('success', 'Requisition approved and stock updated.');
+        return back()->with('success', 'Requisition approved. Stock will change only after receiving, store issue, or approved damage processing.');
+    }
+
+    public function process(Request $request, StockRequisition $requisition, StoreStockService $storeStockService)
+    {
+        $this->authorizeProcessing($request, $requisition);
+
+        $request->validate([
+            'processing_note' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        try {
+            DB::transaction(function () use ($request, $requisition, $storeStockService) {
+                $requisition = StockRequisition::with('product.department')
+                    ->whereKey($requisition->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if (!$requisition->isApproved()) {
+                    throw new \RuntimeException('Only approved requisitions can be processed.');
+                }
+
+                $product = Product::whereKey($requisition->product_id)
+                    ->lockForUpdate()
+                    ->firstOrFail()
+                    ->load('department');
+
+                $store = $storeStockService->defaultStoreFor($product);
+
+                if (!$store) {
+                    throw new \RuntimeException('No default store is configured for ' . $product->name . '.');
+                }
+
+                $quantity = (float) $requisition->quantity;
+                $note = $request->input('processing_note')
+                    ?: 'Processed requisition RQ-' . str_pad((string) $requisition->id, 6, '0', STR_PAD_LEFT);
+
+                if ($requisition->type === StockRequisition::TYPE_STOCK_IN) {
+                    $snapshot = $storeStockService->receiveIntoStore(
+                        product: $product,
+                        store: $store,
+                        quantity: $quantity,
+                        user: $request->user(),
+                        referenceType: StockRequisition::class,
+                        referenceId: $requisition->id,
+                        unitCost: (float) ($product->buy_price ?? 0),
+                        note: $note,
+                        movementType: 'STOCK_IN'
+                    );
+
+                    Stock::create([
+                        'product_id' => $product->id,
+                        'department_id' => $product->department_id,
+                        'type' => 'stock_in',
+                        'quantity' => $quantity,
+                        'before_stock' => $snapshot['product_before'],
+                        'after_stock' => $snapshot['product_after'],
+                        'note' => $note,
+                        'user_id' => $request->user()->id,
+                    ]);
+
+                    $newStatus = StockRequisition::STATUS_RECEIVED;
+                    $action = 'REQUISITION_RECEIVED';
+                    $description = 'Received approved stock-in requisition and increased live stock.';
+                    $quantityChanged = abs($quantity);
+                } else {
+                    $movementType = $requisition->type === StockRequisition::TYPE_DAMAGED
+                        ? 'DAMAGE'
+                        : 'STOCK_OUT';
+
+                    $snapshot = $storeStockService->removeFromStore(
+                        product: $product,
+                        store: $store,
+                        quantity: $quantity,
+                        user: $request->user(),
+                        movementType: $movementType,
+                        referenceType: StockRequisition::class,
+                        referenceId: $requisition->id,
+                        unitCost: (float) ($product->buy_price ?? 0),
+                        note: $note,
+                        approvedBy: $requisition->approver_id
+                    );
+
+                    Stock::create([
+                        'product_id' => $product->id,
+                        'department_id' => $product->department_id,
+                        'type' => $requisition->type === StockRequisition::TYPE_DAMAGED ? 'damage' : 'stock_out',
+                        'quantity' => $quantity,
+                        'before_stock' => $snapshot['product_before'],
+                        'after_stock' => $snapshot['product_after'],
+                        'note' => $note,
+                        'user_id' => $request->user()->id,
+                    ]);
+
+                    $newStatus = StockRequisition::STATUS_PROCESSED;
+                    $action = $requisition->type === StockRequisition::TYPE_DAMAGED
+                        ? 'DAMAGE_PROCESSED'
+                        : 'STOCK_OUT_PROCESSED';
+                    $description = $requisition->type === StockRequisition::TYPE_DAMAGED
+                        ? 'Processed approved damaged-stock requisition and deducted live stock.'
+                        : 'Processed approved stock-out requisition and deducted live stock.';
+                    $quantityChanged = -abs($quantity);
+                }
+
+                $oldStatus = $requisition->status;
+
+                $requisition->update([
+                    'status' => $newStatus,
+                    'manager_note' => trim(($requisition->manager_note ? $requisition->manager_note . "\n" : '') . $note),
+                ]);
+
+                AuditLogService::record([
+                    'action' => $action,
+                    'module' => 'Inventory',
+                    'model' => StockRequisition::class,
+                    'model_id' => $requisition->id,
+                    'department_id' => $requisition->department_id,
+                    'branch_id' => $request->user()->branch_id,
+                    'reference' => 'RQ-' . str_pad((string) $requisition->id, 6, '0', STR_PAD_LEFT),
+                    'description' => $description,
+                    'old_values' => ['status' => $oldStatus],
+                    'new_values' => [
+                        'status' => $newStatus,
+                        'processed_by' => $request->user()->id,
+                        'store_id' => $store->id,
+                    ],
+                    'quantity_before' => $snapshot['product_before'] ?? null,
+                    'quantity_changed' => $quantityChanged,
+                    'quantity_after' => $snapshot['product_after'] ?? null,
+                    'severity' => $quantityChanged < 0 ? 'WARNING' : 'INFO',
+                ]);
+            });
+        } catch (\Throwable $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('success', 'Approved requisition processed and stock ledger updated.');
     }
 
     public function reject(Request $request, StockRequisition $requisition)
@@ -217,59 +353,6 @@ class StockRequisitionController extends Controller
         return back()->with('success', 'Requisition rejected.');
     }
 
-    private function applyApprovedStockChange(Request $request, StockRequisition $requisition): void
-    {
-        $product = Product::whereKey($requisition->product_id)
-            ->lockForUpdate()
-            ->firstOrFail();
-
-        $quantity = (int) $requisition->quantity;
-        $beforeStock = (int) $product->stock;
-        $stockRecordType = 'stock_in';
-        $movementType = 'STOCK_IN';
-
-        if ($requisition->type === StockRequisition::TYPE_STOCK_IN) {
-            $product->increment('stock', $quantity);
-        } else {
-            if ($beforeStock < $quantity) {
-                throw new \RuntimeException('Not enough stock to approve this request.');
-            }
-
-            $product->decrement('stock', $quantity);
-            $stockRecordType = $requisition->type === StockRequisition::TYPE_DAMAGED ? 'damage' : 'stock_out';
-            $movementType = $requisition->type === StockRequisition::TYPE_DAMAGED ? 'DAMAGE' : 'STOCK_OUT';
-        }
-
-        $product->refresh();
-        $afterStock = (int) $product->stock;
-        $note = trim('Approved requisition #' . $requisition->id . ' ' . ($requisition->reason ?? ''));
-
-        Stock::create([
-            'product_id' => $product->id,
-            'department_id' => $product->department_id,
-            'type' => $stockRecordType,
-            'quantity' => $quantity,
-            'before_stock' => $beforeStock,
-            'after_stock' => $afterStock,
-            'note' => $note,
-            'user_id' => $request->user()->id,
-        ]);
-
-        StockMovement::create([
-            'product_id' => $product->id,
-            'department_id' => $product->department_id,
-            'branch_id' => $request->user()->branch_id,
-            'user_id' => $request->user()->id,
-            'type' => $movementType,
-            'quantity' => $quantity,
-            'before_stock' => $beforeStock,
-            'after_stock' => $afterStock,
-            'reference_type' => StockRequisition::class,
-            'reference_id' => $requisition->id,
-            'reason' => $note,
-        ]);
-    }
-
     private function authorizeApproval(Request $request, StockRequisition $requisition): void
     {
         abort_unless(
@@ -281,6 +364,13 @@ class StockRequisitionController extends Controller
             $request->user(),
             $requisition->department_id
         );
+
+        if (
+            !$request->user()->hasOperationalRole('ADMIN', 'ADMINISTRATOR')
+            && (int) $requisition->requester_id === (int) $request->user()->id
+        ) {
+            abort(403, 'Separation of duties: requester cannot approve their own requisition.');
+        }
     }
 
     private function canApproveRequisitions($user): bool
@@ -288,12 +378,37 @@ class StockRequisitionController extends Controller
         return $user->hasOperationalRole(
             'ADMIN',
             'ADMINISTRATOR',
+            'MANAGER'
+        );
+    }
+
+    private function authorizeProcessing(Request $request, StockRequisition $requisition): void
+    {
+        abort_unless(
+            $this->canProcessRequisitions($request->user()),
+            403
+        );
+
+        app(DepartmentAccessService::class)->authorize(
+            $request->user(),
+            $requisition->department_id
+        );
+
+        if (
+            !$request->user()->hasOperationalRole('ADMIN', 'ADMINISTRATOR')
+            && in_array((int) $request->user()->id, [(int) $requisition->requester_id, (int) $requisition->approver_id], true)
+        ) {
+            abort(403, 'Separation of duties: requester/approver cannot process the same requisition.');
+        }
+    }
+
+    private function canProcessRequisitions($user): bool
+    {
+        return $user->hasOperationalRole(
+            'ADMIN',
+            'ADMINISTRATOR',
             'MANAGER',
-            'KITCHEN_MANAGER',
-            'KITCHEN_CHIEF',
-            'BAR_MANAGER',
-            'BAR_CHIEF',
-            'BARTENDER'
+            'STORE_KEEPER'
         );
     }
 }

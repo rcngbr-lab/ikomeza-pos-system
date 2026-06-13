@@ -1,7 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
-@php $canApprove = auth()->user()->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER'); @endphp
+@php
+    $canApprove = auth()->user()->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER');
+    $canReceive = auth()->user()->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER', 'STORE_KEEPER', 'KITCHEN_MANAGER', 'KITCHEN_CHIEF', 'BAR_MANAGER', 'BAR_CHIEF');
+@endphp
 
 <div class="min-h-screen space-y-6 bg-slate-100 pb-28">
     <div>
@@ -74,7 +77,13 @@
                     @if($canApprove && $issue->status === 'PENDING_APPROVAL')
                         <form method="POST" action="{{ route('store.issues.approve', $issue) }}" class="mt-4">
                             @csrf
-                            <button class="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-black text-white">Approve & Transfer</button>
+                            <button class="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-black text-white">Approve</button>
+                        </form>
+                    @endif
+                    @if($canReceive && $issue->status === 'APPROVED')
+                        <form method="POST" action="{{ route('store.issues.receive', $issue) }}" class="mt-4">
+                            @csrf
+                            <button class="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-black text-white">Issue & Receive</button>
                         </form>
                     @endif
                 </div>

@@ -13,6 +13,9 @@
         StockRequisition::STATUS_PENDING => 'Pending',
         StockRequisition::STATUS_APPROVED => 'Approved',
         StockRequisition::STATUS_REJECTED => 'Rejected',
+        StockRequisition::STATUS_CONVERTED_TO_PURCHASE => 'Converted To Purchase',
+        StockRequisition::STATUS_RECEIVED => 'Received',
+        StockRequisition::STATUS_PROCESSED => 'Processed',
     ];
 @endphp
 
@@ -233,7 +236,10 @@
                                             'rounded-full px-3 py-1 text-xs font-black',
                                             'bg-amber-100 text-amber-700' => $requisition->status === StockRequisition::STATUS_PENDING,
                                             'bg-emerald-100 text-emerald-700' => $requisition->status === StockRequisition::STATUS_APPROVED,
-                                            'bg-rose-100 text-rose-700' => $requisition->status === StockRequisition::STATUS_REJECTED,
+                                        'bg-rose-100 text-rose-700' => $requisition->status === StockRequisition::STATUS_REJECTED,
+                                        'bg-sky-100 text-sky-700' => $requisition->status === StockRequisition::STATUS_RECEIVED,
+                                        'bg-violet-100 text-violet-700' => $requisition->status === StockRequisition::STATUS_PROCESSED,
+                                        'bg-slate-100 text-slate-700' => $requisition->status === StockRequisition::STATUS_CONVERTED_TO_PURCHASE,
                                         ])">
                                             {{ $requisition->statusLabel() }}
                                         </span>
@@ -260,6 +266,18 @@
                                                     </button>
                                                 </form>
                                             </div>
+                                        @elseif($canProcess && $requisition->isApproved())
+                                            <form method="POST" action="{{ route('requisitions.process', $requisition) }}" class="space-y-2">
+                                                @csrf
+                                                <input
+                                                    name="processing_note"
+                                                    class="w-full min-w-[180px] rounded-xl border-slate-200 bg-slate-50 text-xs"
+                                                    placeholder="Processing note"
+                                                >
+                                                <button class="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-black text-white">
+                                                    Process Stock
+                                                </button>
+                                            </form>
                                         @else
                                             <span class="text-xs font-semibold text-slate-400">No action</span>
                                         @endif

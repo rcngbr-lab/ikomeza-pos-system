@@ -55,7 +55,8 @@ class StoreStockService
         string $referenceType,
         int $referenceId,
         ?float $unitCost = null,
-        ?string $note = null
+        ?string $note = null,
+        ?string $movementType = null
     ): array {
         $productBefore = (float) $product->stock;
         $product->increment('stock', $quantity);
@@ -66,7 +67,7 @@ class StoreStockService
         $this->recordMovement(
             product: $product,
             user: $user,
-            type: 'PURCHASE_RECEIVED',
+            type: $movementType ?: 'PURCHASE_RECEIVED',
             quantity: $quantity,
             beforeStock: $productBefore,
             afterStock: (float) $product->stock,
@@ -77,6 +78,54 @@ class StoreStockService
             quantityAfter: $storeSnapshot['after'],
             unitCost: $unitCost,
             note: $note ?: 'Supplier delivery received'
+        );
+
+        return [
+            'product_before' => $productBefore,
+            'product_after' => (float) $product->stock,
+            'store_before' => $storeSnapshot['before'],
+            'store_after' => $storeSnapshot['after'],
+        ];
+    }
+
+    public function removeFromStore(
+        Product $product,
+        Store $store,
+        float $quantity,
+        User $user,
+        string $movementType,
+        string $referenceType,
+        int $referenceId,
+        ?float $unitCost = null,
+        ?string $note = null,
+        ?int $approvedBy = null
+    ): array {
+        $productBefore = (float) $product->stock;
+
+        if ($productBefore < $quantity) {
+            throw new \RuntimeException($product->name . ' does not have enough global stock.');
+        }
+
+        $storeSnapshot = $this->decreaseStoreOnly($product, $store, $quantity, $unitCost);
+
+        $product->decrement('stock', $quantity);
+        $product->refresh();
+
+        $this->recordMovement(
+            product: $product,
+            user: $user,
+            type: $movementType,
+            quantity: $quantity,
+            beforeStock: $productBefore,
+            afterStock: (float) $product->stock,
+            referenceType: $referenceType,
+            referenceId: $referenceId,
+            fromStore: $store,
+            quantityBefore: $storeSnapshot['before'],
+            quantityAfter: $storeSnapshot['after'],
+            unitCost: $unitCost,
+            note: $note,
+            approvedBy: $approvedBy
         );
 
         return [
@@ -205,7 +254,7 @@ class StoreStockService
             'before_stock' => $beforeStock,
             'after_stock' => $afterStock,
             'quantity_before' => $quantityBefore,
-            'quantity_changed' => in_array($type, ['SALE', 'DAMAGE', 'STORE_ISSUE', 'SUPPLIER_RETURN'], true)
+            'quantity_changed' => in_array($type, ['SALE', 'DAMAGE', 'STORE_ISSUE', 'STOCK_OUT', 'SUPPLIER_RETURN', 'RECIPE_CONSUMPTION'], true)
                 ? -abs($quantity)
                 : abs($quantity),
             'quantity_after' => $quantityAfter,

@@ -17,6 +17,14 @@ class DemoAccountService
 
     public function ensure(): void
     {
+        if (!filter_var(env('ENABLE_DEMO_ACCOUNTS', false), FILTER_VALIDATE_BOOL)) {
+            return;
+        }
+
+        if (app()->environment('production')) {
+            return;
+        }
+
         if (
             !Schema::hasTable('roles')
             || !Schema::hasTable('users')

@@ -288,7 +288,7 @@ function printReceipt()
             </td>
 
             <td class="right">
-                {{ $sale->payment_method }}
+                {{ $sale->paymentMethodLabel() }} / {{ $sale->payment_status }}
             </td>
 
         </tr>
@@ -380,6 +380,40 @@ function printReceipt()
 
         <tr>
 
+            <td>
+                Subtotal
+            </td>
+
+            <td class="right">
+                {{ number_format($sale->subtotal) }} Frw
+            </td>
+
+        </tr>
+
+        @if((float) $sale->discount > 0)
+            <tr>
+                <td>
+                    Discount
+                </td>
+                <td class="right">
+                    -{{ number_format($sale->discount) }} Frw
+                </td>
+            </tr>
+        @endif
+
+        @if((float) $sale->tax > 0)
+            <tr>
+                <td>
+                    VAT {{ number_format($sale->vat_rate, 1) }}%
+                </td>
+                <td class="right">
+                    {{ number_format($sale->tax) }} Frw
+                </td>
+            </tr>
+        @endif
+
+        <tr>
+
             <td class="bold">
                 TOTAL
             </td>
@@ -414,7 +448,30 @@ function printReceipt()
 
         </tr>
 
+        @if((float) $sale->credit_due > 0)
+            <tr>
+                <td>
+                    Credit Due
+                </td>
+                <td class="right">
+                    {{ number_format($sale->credit_due) }} Frw
+                </td>
+            </tr>
+        @endif
+
     </table>
+
+    @if($sale->payments->count())
+        <div class="line"></div>
+        <table>
+            @foreach($sale->payments as $payment)
+                <tr>
+                    <td>{{ \App\Models\Sale::PAYMENT_METHOD_LABELS[$payment->method] ?? $payment->method }}</td>
+                    <td class="right">{{ number_format($payment->amount) }} Frw</td>
+                </tr>
+            @endforeach
+        </table>
+    @endif
 
     <!-- BARCODE -->
 

@@ -13,6 +13,9 @@ class StockRequisition extends Model
     public const STATUS_PENDING = 'PENDING';
     public const STATUS_APPROVED = 'APPROVED';
     public const STATUS_REJECTED = 'REJECTED';
+    public const STATUS_CONVERTED_TO_PURCHASE = 'CONVERTED_TO_PURCHASE';
+    public const STATUS_RECEIVED = 'RECEIVED';
+    public const STATUS_PROCESSED = 'PROCESSED';
 
     protected $fillable = [
         'product_id',
@@ -69,5 +72,10 @@ class StockRequisition extends Model
     public function isPending(): bool
     {
         return $this->status === self::STATUS_PENDING;
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->status === self::STATUS_APPROVED;
     }
 }

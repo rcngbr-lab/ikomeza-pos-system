@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use App\Services\AuditLogService;
 
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
@@ -65,7 +66,7 @@ class RoleController extends Controller
 
         ]);
 
-        Role::create([
+        $role = Role::create([
 
             'code' => strtoupper($request->code),
 
@@ -77,6 +78,16 @@ class RoleController extends Controller
 
             'description' => $request->description
 
+        ]);
+
+        AuditLogService::record([
+            'action' => 'ROLE_CREATED',
+            'module' => 'Roles',
+            'model' => $role,
+            'reference' => $role->name,
+            'description' => 'Created role ' . $role->name . '.',
+            'new_values' => $role->only(['code', 'name', 'description', 'guard_name']),
+            'severity' => 'SECURITY',
         ]);
 
         return redirect()
@@ -135,6 +146,8 @@ class RoleController extends Controller
 
         ]);
 
+        $oldValues = $role->only(['code', 'name', 'slug', 'description']);
+
         $role->update([
 
             'code' => strtoupper($request->code),
@@ -145,6 +158,17 @@ class RoleController extends Controller
 
             'description' => $request->description
 
+        ]);
+
+        AuditLogService::record([
+            'action' => 'ROLE_UPDATED',
+            'module' => 'Roles',
+            'model' => $role,
+            'reference' => $role->name,
+            'description' => 'Updated role ' . $role->name . '.',
+            'old_values' => $oldValues,
+            'new_values' => $role->only(array_keys($oldValues)),
+            'severity' => 'SECURITY',
         ]);
 
         return redirect()
@@ -165,15 +189,29 @@ class RoleController extends Controller
     {
         $role = Role::findOrFail($id);
 
-        if ($role->name == 'ADMIN') {
+        if (
+            in_array(strtoupper((string) ($role->code ?? $role->name)), ['ADMIN', 'ADMINISTRATOR'], true)
+            || (bool) ($role->is_system ?? false)
+            || $role->users()->exists()
+        ) {
 
             return back()->withErrors([
 
                 'error' =>
-                    'Admin role cannot be deleted.'
+                    'System roles and assigned roles cannot be deleted. Deactivate or adjust permissions instead.'
 
             ]);
         }
+
+        AuditLogService::record([
+            'action' => 'ROLE_DELETED',
+            'module' => 'Roles',
+            'model' => $role,
+            'reference' => $role->name,
+            'description' => 'Deleted unused role ' . $role->name . '.',
+            'old_values' => $role->only(['code', 'name', 'description', 'guard_name']),
+            'severity' => 'SECURITY',
+        ]);
 
         $role->delete();
 
@@ -229,9 +267,22 @@ class RoleController extends Controller
             $permissionIds
         )->pluck('name');
 
+        $oldPermissions = $role->permissions()->pluck('name')->values()->all();
+
         $role->syncPermissions(
             $permissions
         );
+
+        AuditLogService::record([
+            'action' => 'ROLE_PERMISSIONS_CHANGED',
+            'module' => 'Permissions',
+            'model' => $role,
+            'reference' => $role->name,
+            'description' => 'Updated permissions for role ' . $role->name . '.',
+            'old_values' => ['permissions' => $oldPermissions],
+            'new_values' => ['permissions' => $permissions->values()->all()],
+            'severity' => 'SECURITY',
+        ]);
 
         return redirect()
             ->route('roles.index')

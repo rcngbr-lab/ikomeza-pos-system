@@ -18,10 +18,10 @@
         'KITCHEN_CHIEF',
         'BAR_MANAGER',
         'BAR_CHIEF',
-        'BARTENDER',
         'STORE_KEEPER'
     );
 
+    $canCatalog = $user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER');
     $canManageStaff = $user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER');
     $canAdmin = $user->hasOperationalRole('ADMIN', 'ADMINISTRATOR');
     $canAuditLogs = $user->hasOperationalRole(
@@ -73,9 +73,18 @@
         'KITCHEN_MANAGER',
         'KITCHEN_CHIEF',
         'BAR_MANAGER',
+        'BAR_CHIEF'
+    );
+    $canTables = $user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER', 'WAITER', 'SERVER');
+    $canTickets = $user->hasOperationalRole(
+        'ADMIN',
+        'ADMINISTRATOR',
+        'MANAGER',
+        'KITCHEN_MANAGER',
+        'KITCHEN_CHIEF',
+        'BAR_MANAGER',
         'BAR_CHIEF',
         'BARTENDER',
-        'CASHIER',
         'WAITER',
         'SERVER'
     );
@@ -98,12 +107,36 @@
             'show' => $canSell,
         ],
         [
+            'label' => 'Tables',
+            'route' => 'tables.index',
+            'active' => 'tables.*',
+            'icon' => 'table',
+            'group' => 'Restaurant',
+            'show' => $canTables,
+        ],
+        [
+            'label' => 'Tickets',
+            'route' => 'tickets.index',
+            'active' => 'tickets.*',
+            'icon' => 'ticket',
+            'group' => 'Restaurant',
+            'show' => $canTickets,
+        ],
+        [
             'label' => 'Sales',
             'route' => 'sales.index',
             'active' => 'sales.*',
             'icon' => 'receipt',
             'group' => 'Core',
             'show' => $canViewSales,
+        ],
+        [
+            'label' => 'Customers',
+            'route' => 'customers.index',
+            'active' => 'customers.*',
+            'icon' => 'users',
+            'group' => 'Core',
+            'show' => $canSell,
         ],
         [
             'label' => 'Shift',
@@ -130,6 +163,14 @@
             'show' => $canOperate,
         ],
         [
+            'label' => 'Stock Count',
+            'route' => 'store.stock-counts',
+            'active' => 'store.stock-counts*',
+            'icon' => 'count',
+            'group' => 'Stock',
+            'show' => $canOperate,
+        ],
+        [
             'label' => 'Inventory',
             'route' => 'inventory.index',
             'active' => 'inventory.*',
@@ -151,7 +192,7 @@
             'active' => 'products.*',
             'icon' => 'package',
             'group' => 'Catalog',
-            'show' => $canOperate,
+            'show' => $canCatalog,
         ],
         [
             'label' => 'Add Product',
@@ -159,7 +200,7 @@
             'active' => 'products.create',
             'icon' => 'plus',
             'group' => 'Catalog',
-            'show' => $canOperate,
+            'show' => $canCatalog,
         ],
         [
             'label' => 'Categories',
@@ -167,7 +208,7 @@
             'active' => 'categories.*',
             'icon' => 'tags',
             'group' => 'Catalog',
-            'show' => $canOperate,
+            'show' => $canCatalog,
         ],
         [
             'label' => 'Reports',
@@ -225,6 +266,14 @@
             'group' => 'Admin',
             'show' => $canAuditLogs,
         ],
+        [
+            'label' => 'Settings',
+            'route' => 'settings.index',
+            'active' => 'settings.*',
+            'icon' => 'settings',
+            'group' => 'Admin',
+            'show' => $canAdmin,
+        ],
     ])
         ->filter(fn ($item) => $item['show'] && Route::has($item['route']))
         ->values();
@@ -259,6 +308,10 @@
             'shield' => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>',
             'key' => '<circle cx="8" cy="15" r="4"/><path d="M11 12 21 2"/><path d="m17 6 3 3"/><path d="m14 9 3 3"/>',
             'activity' => '<path d="M4 19V5"/><path d="M4 19h16"/><path d="m7 14 3-4 3 3 4-7"/>',
+            'table' => '<rect x="4" y="6" width="16" height="8" rx="2"/><path d="M7 14v5"/><path d="M17 14v5"/><path d="M8 10h8"/>',
+            'ticket' => '<path d="M4 7a2 2 0 0 1 2-2h12v4a2 2 0 1 0 0 4v4H6a2 2 0 0 1-2-2v-4a2 2 0 1 0 0-4Z"/><path d="M9 9h4"/><path d="M9 13h6"/>',
+            'count' => '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h5"/>',
+            'settings' => '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2 3-.2-.1a1.7 1.7 0 0 0-2 .1 1.7 1.7 0 0 0-.8 1.7V22h-3.6v-.3a1.7 1.7 0 0 0-.8-1.7 1.7 1.7 0 0 0-2-.1l-.2.1-2-3 .1-.1A1.7 1.7 0 0 0 4.6 15 1.7 1.7 0 0 0 3 14H2v-4h1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1 2-3 .2.1a1.7 1.7 0 0 0 2-.1 1.7 1.7 0 0 0 .8-1.7V2h3.6v.3a1.7 1.7 0 0 0 .8 1.7 1.7 1.7 0 0 0 2 .1l.2-.1 2 3-.1.1A1.7 1.7 0 0 0 19.4 9 1.7 1.7 0 0 0 21 10h1v4h-1a1.7 1.7 0 0 0-1.6 1Z"/>',
             default => '<circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/>',
         };
 
@@ -269,17 +322,17 @@
 @endphp
 
 <nav
-    class="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 px-2 pt-2 shadow-[0_-14px_35px_rgba(15,23,42,0.14)] backdrop-blur-xl"
+    class="mobile-bottom-nav fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 px-2 pt-2 shadow-[0_-14px_35px_rgba(15,23,42,0.14)] backdrop-blur-xl"
     style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));"
 >
     <div class="mx-auto max-w-3xl">
-        <div class="grid grid-cols-5 items-end gap-1 rounded-[1.35rem] border border-slate-200 bg-slate-950 p-1.5 shadow-lg shadow-slate-950/20">
+        <div class="mobile-nav-shell grid grid-cols-5 items-end gap-1 rounded-[1.35rem] border border-slate-200 bg-slate-950 p-1.5 shadow-lg shadow-slate-950/20">
             @foreach($primaryItems as $item)
                 @php $active = $isActive($item); @endphp
 
                 <a
                     href="{{ route($item['route']) }}"
-                    class="flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-2xl px-1.5 text-[10px] font-black transition active:scale-95 {{ $active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-950/40' : 'text-slate-300 hover:bg-slate-900 hover:text-white' }}"
+                    class="mobile-nav-item flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-2xl px-1.5 text-[10px] font-black transition active:scale-95 {{ $active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-950/40' : 'text-slate-300 hover:bg-slate-900 hover:text-white' }}"
                     aria-label="{{ $item['label'] }}"
                 >
                     {!! $icon($item['icon'], 'h-5 w-5') !!}
@@ -289,7 +342,7 @@
 
             <details class="group relative">
                 <summary
-                    class="flex min-h-[56px] cursor-pointer list-none flex-col items-center justify-center gap-1 rounded-2xl px-1.5 text-[10px] font-black text-slate-300 transition active:scale-95 group-open:bg-white group-open:text-slate-950 [&::-webkit-details-marker]:hidden"
+                    class="mobile-nav-more flex min-h-[56px] cursor-pointer list-none flex-col items-center justify-center gap-1 rounded-2xl px-1.5 text-[10px] font-black text-slate-300 transition active:scale-95 group-open:bg-white group-open:text-slate-950 [&::-webkit-details-marker]:hidden"
                     aria-label="More navigation"
                 >
                     <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -300,7 +353,7 @@
                     <span class="leading-none">More</span>
                 </summary>
 
-                <div class="fixed inset-x-3 bottom-[5.85rem] max-h-[70vh] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/25">
+                <div class="mobile-nav-panel fixed inset-x-3 bottom-[5.85rem] max-h-[70vh] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/25">
                     <div class="border-b border-slate-100 bg-slate-950 px-4 py-3 text-white">
                         <div class="flex items-center justify-between gap-3">
                             <div>
@@ -313,20 +366,20 @@
                         </div>
                     </div>
 
-                    <div class="max-h-[calc(70vh-64px)] space-y-4 overflow-y-auto p-4">
+                    <div class="mobile-nav-panel-body touch-scroll max-h-[calc(70vh-64px)] space-y-4 overflow-y-auto p-4">
                         @foreach($moreItems as $group => $items)
                             <section>
                                 <h3 class="px-1 text-[11px] font-black uppercase tracking-widest text-slate-400">
                                     {{ $group }}
                                 </h3>
 
-                                <div class="mt-2 grid grid-cols-2 gap-2 min-[420px]:grid-cols-3">
+                                <div class="mobile-nav-panel-grid mt-2 grid grid-cols-2 gap-2 min-[420px]:grid-cols-3">
                                     @foreach($items as $item)
                                         @php $active = $isActive($item); @endphp
 
                                         <a
                                             href="{{ route($item['route']) }}"
-                                            class="flex min-h-[76px] flex-col justify-between rounded-2xl border p-3 transition active:scale-[0.98] {{ $active ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-white' }}"
+                                            class="mobile-nav-panel-link flex min-h-[76px] flex-col justify-between rounded-2xl border p-3 transition active:scale-[0.98] {{ $active ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-white' }}"
                                         >
                                             <span class="flex h-9 w-9 items-center justify-center rounded-xl {{ $active ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 shadow-sm' }}">
                                                 {!! $icon($item['icon'], 'h-5 w-5') !!}

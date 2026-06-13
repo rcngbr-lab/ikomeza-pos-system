@@ -77,8 +77,9 @@ class ReportController extends Controller
         */
 
         $filter = $request->filter ?? 'daily';
+        $hasCustomDateRange = $request->filled('start_date') || $request->filled('end_date');
 
-        if (in_array($filter, ['daily', 'today'], true)) {
+        if (!$hasCustomDateRange && in_array($filter, ['daily', 'today'], true)) {
 
             $query->whereDate(
                 'created_at',
@@ -86,7 +87,7 @@ class ReportController extends Controller
             );
         }
 
-        if (in_array($filter, ['weekly', 'week'], true)) {
+        if (!$hasCustomDateRange && in_array($filter, ['weekly', 'week'], true)) {
 
             $query->whereBetween(
                 'created_at',
@@ -97,7 +98,7 @@ class ReportController extends Controller
             );
         }
 
-        if (in_array($filter, ['monthly', 'month'], true)) {
+        if (!$hasCustomDateRange && in_array($filter, ['monthly', 'month'], true)) {
 
             $query->whereMonth(
                 'created_at',
@@ -105,7 +106,7 @@ class ReportController extends Controller
             );
         }
 
-        if (in_array($filter, ['yearly', 'year'], true)) {
+        if (!$hasCustomDateRange && in_array($filter, ['yearly', 'year'], true)) {
 
             $query->whereYear(
                 'created_at',
@@ -119,18 +120,14 @@ class ReportController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        if (
-            $request->start_date &&
-            $request->end_date
-        ) {
+        if ($hasCustomDateRange) {
+            if ($request->filled('start_date')) {
+                $query->where('created_at', '>=', $request->start_date . ' 00:00:00');
+            }
 
-            $query->whereBetween(
-                'created_at',
-                [
-                    $request->start_date . ' 00:00:00',
-                    $request->end_date . ' 23:59:59'
-                ]
-            );
+            if ($request->filled('end_date')) {
+                $query->where('created_at', '<=', $request->end_date . ' 23:59:59');
+            }
         }
 
         /*
@@ -340,8 +337,16 @@ class ReportController extends Controller
 
     private function periodLabel(string $filter, Request $request): string
     {
-        if ($request->start_date && $request->end_date) {
+        if ($request->filled('start_date') && $request->filled('end_date')) {
             return $request->start_date . ' to ' . $request->end_date;
+        }
+
+        if ($request->filled('start_date')) {
+            return 'From ' . $request->start_date;
+        }
+
+        if ($request->filled('end_date')) {
+            return 'Until ' . $request->end_date;
         }
 
         return match ($filter) {

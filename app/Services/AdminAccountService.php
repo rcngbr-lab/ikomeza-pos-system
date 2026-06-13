@@ -64,6 +64,8 @@ class AdminAccountService
             ->orWhereRaw('LOWER(email) = ?', [strtolower($email)])
             ->first();
 
+        $isNewUser = !$user;
+
         if (!$user) {
             $user = new User();
         }
@@ -72,17 +74,22 @@ class AdminAccountService
             ->when($user->exists, fn ($query) => $query->whereKeyNot($user->id))
             ->exists();
 
-        $user->forceFill([
+        $payload = [
             'name' => $name,
             'username' => $username,
             'email' => $emailOwner ? ($user->email ?: $username . '@ikomeza.local') : $email,
-            'password' => Hash::make($password),
             'email_verified_at' => now(),
             'role' => 'ADMIN',
             'role_id' => $adminRole->id,
             'status' => 'ACTIVE',
             'active' => true,
-        ])->save();
+        ];
+
+        if ($isNewUser || filter_var(env('ADMIN_RESET_PASSWORD', false), FILTER_VALIDATE_BOOL)) {
+            $payload['password'] = Hash::make($password);
+        }
+
+        $user->forceFill($payload)->save();
 
         if (!$user->hasRole($adminRole->name)) {
             $user->syncRoles([$adminRole->name]);
@@ -104,15 +111,23 @@ class AdminAccountService
 
     private function adminPassword(): string
     {
-        $password = $this->envValue('ADMIN_PASSWORD', 'MyStrongPassword123');
+        $password = $this->envValue('ADMIN_PASSWORD', '');
         $placeholderPasswords = [
+            '',
             'password',
             'change-this-password',
             'changeme',
+            'mystrongpassword123',
         ];
 
-        return in_array(strtolower($password), $placeholderPasswords, true)
-            ? 'MyStrongPassword123'
-            : $password;
+        if (in_array(strtolower($password), $placeholderPasswords, true)) {
+            if (app()->environment('production')) {
+                throw new \RuntimeException('ADMIN_PASSWORD must be set to a strong, private value before seeding production.');
+            }
+
+            return 'MyStrongPassword123';
+        }
+
+        return $password;
     }
 }

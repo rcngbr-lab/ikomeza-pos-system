@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 use App\Models\Permission;
+use App\Services\AuditLogService;
 
 class PermissionController extends Controller
 {
@@ -68,7 +69,7 @@ class PermissionController extends Controller
 
         try {
 
-            Permission::create([
+            $permission = Permission::create([
 
                 'code' => strtolower(
                     trim($request->code)
@@ -82,6 +83,16 @@ class PermissionController extends Controller
                     $request->description
                 )
 
+            ]);
+
+            AuditLogService::record([
+                'action' => 'PERMISSION_CREATED',
+                'module' => 'Permissions',
+                'model' => $permission,
+                'reference' => $permission->code,
+                'description' => 'Created permission ' . $permission->name . '.',
+                'new_values' => $permission->only(['code', 'name', 'description']),
+                'severity' => 'SECURITY',
             ]);
 
             DB::commit();
@@ -156,6 +167,8 @@ class PermissionController extends Controller
 
         try {
 
+            $oldValues = $permission->only(['code', 'name', 'description']);
+
             $permission->update([
 
                 'code' => strtolower(
@@ -170,6 +183,17 @@ class PermissionController extends Controller
                     $request->description
                 )
 
+            ]);
+
+            AuditLogService::record([
+                'action' => 'PERMISSION_UPDATED',
+                'module' => 'Permissions',
+                'model' => $permission,
+                'reference' => $permission->code,
+                'description' => 'Updated permission ' . $permission->name . '.',
+                'old_values' => $oldValues,
+                'new_values' => $permission->only(array_keys($oldValues)),
+                'severity' => 'SECURITY',
             ]);
 
             DB::commit();
@@ -223,6 +247,16 @@ class PermissionController extends Controller
         DB::beginTransaction();
 
         try {
+
+            AuditLogService::record([
+                'action' => 'PERMISSION_DELETED',
+                'module' => 'Permissions',
+                'model' => $permission,
+                'reference' => $permission->code,
+                'description' => 'Deleted unassigned permission ' . $permission->name . '.',
+                'old_values' => $permission->only(['code', 'name', 'description']),
+                'severity' => 'SECURITY',
+            ]);
 
             $permission->delete();
 

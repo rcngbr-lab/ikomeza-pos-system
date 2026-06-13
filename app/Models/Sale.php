@@ -22,11 +22,23 @@ class Sale extends Model
 
         'customer_name',
 
+        'customer_id',
+
+        'table_id',
+
         'subtotal',
 
         'tax',
 
+        'taxable_amount',
+
+        'vat_rate',
+
         'discount',
+
+        'discount_reason',
+
+        'discount_approved_by',
 
         'grand_total',
 
@@ -38,9 +50,17 @@ class Sale extends Model
 
         'payment_status',
 
+        'credit_due',
+
         'sale_status',
 
         'notes',
+
+        'fiscal_status',
+
+        'fiscal_receipt_no',
+
+        'fiscal_payload',
 
         'is_refunded',
 
@@ -62,6 +82,10 @@ class Sale extends Model
 
         'tax' => 'decimal:2',
 
+        'taxable_amount' => 'decimal:2',
+
+        'vat_rate' => 'decimal:3',
+
         'discount' => 'decimal:2',
 
         'grand_total' => 'decimal:2',
@@ -70,9 +94,13 @@ class Sale extends Model
 
         'change_amount' => 'decimal:2',
 
+        'credit_due' => 'decimal:2',
+
         'is_refunded' => 'boolean',
 
         'refunded_at' => 'datetime',
+
+        'fiscal_payload' => 'array',
 
     ];
 
@@ -141,6 +169,35 @@ class Sale extends Model
         );
     }
 
+    public function payments()
+    {
+        return $this->hasMany(
+            \App\Models\Payment::class
+        );
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(
+            \App\Models\Customer::class
+        );
+    }
+
+    public function table()
+    {
+        return $this->belongsTo(
+            \App\Models\RestaurantTable::class,
+            'table_id'
+        );
+    }
+
+    public function orderTickets()
+    {
+        return $this->hasMany(
+            \App\Models\OrderTicket::class
+        );
+    }
+
     /*
     |--------------------------------------------------------------------------
     | APPROVER
@@ -188,6 +245,8 @@ public const PAYMENT_METHODS = [
 
     'BANK_TRANSFER',
 
+    'CREDIT',
+
 ];
 
 public const PAYMENT_METHOD_LABELS = [
@@ -198,6 +257,7 @@ public const PAYMENT_METHOD_LABELS = [
     'VISA' => 'VISA',
     'MASTER_CARD' => 'Mastercard',
     'BANK_TRANSFER' => 'Bank Transfer',
+    'CREDIT' => 'Customer Credit',
 
 ];
 
@@ -237,6 +297,7 @@ public static function normalizePaymentMethod(?string $method): string
         'AIRTEL', 'AIRTEL_MONEY' => 'AIRTEL_MONEY',
         'MTN', 'MOMO', 'MOBILE_MONEY' => 'MOMO',
         'VISA' => 'VISA',
+        'CREDIT', 'CUSTOMER_CREDIT' => 'CREDIT',
         default => 'CASH',
     };
 }

@@ -42,6 +42,10 @@ class Product extends Model
 
         'status',
 
+        'tax_category',
+
+        'expiry_alert_days',
+
     ];
 
     protected $casts = [
@@ -57,6 +61,8 @@ class Product extends Model
         'stock' => 'decimal:2',
 
         'alert_stock' => 'decimal:2',
+
+        'expiry_alert_days' => 'integer',
 
     ];
 

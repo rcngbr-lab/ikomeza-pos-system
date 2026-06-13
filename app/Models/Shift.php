@@ -40,6 +40,10 @@ class Shift extends Model
         'mastercard_sales',
         'bank_transfer_sales',
 
+        'locked_at',
+
+        'locked_by',
+
     ];
 
     protected $casts = [
@@ -71,6 +75,8 @@ class Shift extends Model
         'opened_at' => 'datetime',
 
         'closed_at' => 'datetime',
+
+        'locked_at' => 'datetime',
 
     ];
 

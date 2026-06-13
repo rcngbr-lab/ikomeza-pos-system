@@ -8,6 +8,7 @@ use App\Models\Branch;
 use App\Models\Department;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\AuditLogService;
 use App\Services\DepartmentCatalogService;
 use App\Services\UserService;
 
@@ -47,7 +48,19 @@ class UserController extends Controller
     ) {
         $this->authorizeRequestedRole($request->validated('role'));
 
-        $userService->create($request->validated());
+        $user = $userService->create($request->validated());
+
+        AuditLogService::record([
+            'action' => 'USER_CREATED',
+            'module' => 'Users',
+            'model' => $user,
+            'branch_id' => $user->branch_id,
+            'department_id' => $user->department_id,
+            'reference' => $user->username,
+            'description' => 'Created user account ' . $user->username . ' with role ' . $user->roleLabel() . '.',
+            'new_values' => $user->only(['name', 'username', 'email', 'phone', 'role', 'role_id', 'branch_id', 'department_id', 'status']),
+            'severity' => 'SECURITY',
+        ]);
 
         return redirect()
             ->route('users.index')
@@ -74,7 +87,29 @@ class UserController extends Controller
         $this->authorizeManageableUser($user);
         $this->authorizeRequestedRole($request->validated('role'));
 
-        $userService->update($user, $request->validated());
+        $oldValues = $user->only(['name', 'username', 'email', 'phone', 'role', 'role_id', 'branch_id', 'department_id', 'status']);
+
+        $user = $userService->update($user, $request->validated());
+
+        AuditLogService::record([
+            'action' => (
+                ($oldValues['role'] ?? null) !== $user->role
+                || (int) ($oldValues['role_id'] ?? 0) !== (int) $user->role_id
+            ) ? 'USER_ROLE_CHANGED' : 'USER_UPDATED',
+            'module' => 'Users',
+            'model' => $user,
+            'branch_id' => $user->branch_id,
+            'department_id' => $user->department_id,
+            'reference' => $user->username,
+            'description' => 'Updated user account ' . $user->username . '.',
+            'old_values' => $oldValues,
+            'new_values' => $user->only(array_keys($oldValues)),
+            'severity' => (
+                ($oldValues['role'] ?? null) !== $user->role
+                || (int) ($oldValues['role_id'] ?? 0) !== (int) $user->role_id
+                || ($oldValues['status'] ?? null) !== $user->status
+            ) ? 'SECURITY' : 'INFO',
+        ]);
 
         return redirect()
             ->route('users.index')

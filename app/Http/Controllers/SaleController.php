@@ -11,6 +11,7 @@ use App\Models\Refund;
 use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Services\DepartmentAccessService;
+use App\Services\RefundWorkflowService;
 use App\Services\StoreStockService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -246,7 +247,10 @@ class SaleController extends Controller
         $sale = Sale::with([
             'items.product.department',
             'items.department',
-            'user'
+            'user',
+            'payments',
+            'customer',
+            'table'
         ])->findOrFail($id);
 
         /*
@@ -273,7 +277,7 @@ class SaleController extends Controller
     }
 
 
-public function refund(Request $request, $id)
+public function refund(Request $request, $id, RefundWorkflowService $refundWorkflow)
 {
     $request->validate([
         'refund_reason' => ['nullable', 'string', 'max:500'],
@@ -281,153 +285,24 @@ public function refund(Request $request, $id)
 
     $sale = Sale::with('items.department')->findOrFail($id);
 
-    if ((bool) $sale->is_refunded || $sale->sale_status === 'REFUNDED') {
-
-        return back()->with(
-            'error',
-            'Sale already refunded.'
-        );
-    }
-
-    $restoredUnits = 0;
-
     try {
-        DB::transaction(function () use ($sale, $request, &$restoredUnits) {
-            $refund = Refund::create($this->onlyExistingColumns('refunds', [
-
-                'sale_id' => $sale->id,
-
-                'user_id' => auth()->id(),
-
-                'amount' => $sale->grand_total,
-
-                'reason' => $request->refund_reason,
-
-                'status' => Refund::STATUS_COMPLETED,
-
-                'refunded_at' => now(),
-
-            ]));
-
-        foreach ($sale->items as $item) {
-
-            $product = Product::whereKey($item->product_id)
-                ->lockForUpdate()
-                ->first();
-
-            if ($product) {
-
-                $before = $product->stock;
-
-                $product->increment(
-                    'stock',
-                    $item->quantity
-                );
-
-                $product->refresh();
-                $restoredUnits += (int) $item->quantity;
-
-                $storeStockService = app(StoreStockService::class);
-                $store = $storeStockService->defaultStoreFor($product);
-                $storeSnapshot = null;
-
-                if ($store) {
-                    $storeSnapshot = $storeStockService->increaseStoreOnly(
-                        $product,
-                        $store,
-                        (float) $item->quantity,
-                        (float) ($product->buy_price ?? 0)
-                    );
-                }
-
-                Stock::create($this->onlyExistingColumns('stocks', [
-                    'product_id' => $product->id,
-                    'department_id' => $product->department_id ?: $item->department_id,
-                    'type' => 'refund',
-                    'quantity' => $item->quantity,
-                    'before_stock' => $before,
-                    'after_stock' => $product->stock,
-                    'note' => 'Refund for ' . $sale->receipt_no,
-                    'user_id' => auth()->id(),
-                ]));
-
-                StockMovement::create($this->onlyExistingColumns('stock_movements', [
-                    'product_id' => $product->id,
-                    'department_id' => $product->department_id ?: $item->department_id,
-                    'branch_id' => auth()->user()->branch_id,
-                    'user_id' => auth()->id(),
-                    'to_store_id' => $store?->id,
-                    'type' => 'REFUND',
-                    'movement_type' => 'REFUND',
-                    'quantity' => $item->quantity,
-                    'before_stock' => $before,
-                    'after_stock' => $product->stock,
-                    'quantity_before' => $storeSnapshot['before'] ?? $before,
-                    'quantity_changed' => abs((float) $item->quantity),
-                    'quantity_after' => $storeSnapshot['after'] ?? $product->stock,
-                    'unit_cost' => $product->buy_price ?? 0,
-                    'total_cost' => ($product->buy_price ?? 0) * (float) $item->quantity,
-                    'performed_by' => auth()->id(),
-                    'reference_type' => Refund::class,
-                    'reference_id' => $refund->id,
-                    'reason' => trim('Refund for ' . $sale->receipt_no . ' ' . ($request->refund_reason ?? '')),
-                    'notes' => trim('Refund for ' . $sale->receipt_no . ' ' . ($request->refund_reason ?? '')),
-                ]));
-            }
-        }
-
-        $sale->update($this->onlyExistingColumns('sales', [
-
-            'is_refunded' => true,
-
-            'refund_amount' => $sale->grand_total,
-
-            'refund_reason' => $request->refund_reason,
-
-            'refunded_at' => now(),
-
-            'refunded_by' => auth()->id(),
-
-            'sale_status' => 'REFUNDED',
-
-        ]));
-
-        \App\Services\AuditLogService::record([
-            'action' => 'REFUND_CREATED',
-            'module' => 'Refunds',
-            'event_type' => 'FINANCIAL',
-            'model' => Refund::class,
-            'model_id' => $refund->id,
-            'department_id' => $sale->items->first()?->department_id,
-            'branch_id' => $sale->branch_id,
-            'reference' => $sale->receipt_no,
-            'description' => 'Refunded sale ' . $sale->receipt_no,
-            'old_values' => [
-                'sale_status' => 'COMPLETED',
-                'is_refunded' => false,
-            ],
-            'new_values' => [
-                'sale_status' => 'REFUNDED',
-                'is_refunded' => true,
-                'refund_amount' => $sale->grand_total,
-            ],
-            'amount' => $sale->grand_total,
-            'quantity_changed' => $sale->items->sum('quantity'),
-            'severity' => 'WARNING',
-        ]);
-        });
+        $refundRequest = $refundWorkflow->request(
+            $sale,
+            $request->user(),
+            $request->refund_reason
+        );
     } catch (\Throwable $exception) {
         report($exception);
 
         return back()->with(
             'error',
-            'Refund failed. No database data was deleted. Please try again after the latest update finishes deploying.'
+            $exception->getMessage() ?: 'Refund request failed. No database data was deleted.'
         );
     }
 
     return back()->with(
         'success',
-        'Sale refunded successfully. ' . number_format($restoredUnits) . ' stock units restored.'
+        'Refund request ' . $refundRequest->request_number . ' sent for approval. Stock will restore only after approval.'
     );
 }
 
@@ -458,7 +333,10 @@ public function receipt($id)
 
         'items.product.department',
         'items.department',
-        'user'
+        'user',
+        'payments',
+        'customer',
+        'table'
 
     ])->findOrFail($id);
 

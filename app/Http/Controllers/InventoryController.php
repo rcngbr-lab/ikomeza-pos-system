@@ -7,6 +7,8 @@ use App\Models\Department;
 use App\Models\Product;
 use App\Models\Stock;
 use App\Models\StockMovement;
+use App\Models\StockRequisition;
+use App\Services\AuditLogService;
 use App\Services\CategoryCatalogService;
 use App\Services\DepartmentAccessService;
 use App\Services\StoreStockService;
@@ -245,152 +247,81 @@ class InventoryController extends Controller
 
     public function stockIn(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
             'quantity' => ['required', 'integer', 'min:1'],
             'note' => ['nullable', 'string', 'max:500'],
         ]);
 
-        DB::transaction(function () use ($request) {
-            $product = Product::whereKey($request->product_id)
-                ->lockForUpdate()
-                ->firstOrFail();
+        $product = Product::findOrFail($validated['product_id']);
 
-            app(DepartmentAccessService::class)->authorize(
-                $request->user(),
-                $product->department_id
-            );
+        app(DepartmentAccessService::class)->authorize(
+            $request->user(),
+            $product->department_id
+        );
 
-            $before = $product->stock;
-            $product->increment('stock', (int) $request->quantity);
-            $product->refresh();
+        $requisition = StockRequisition::create([
+            'product_id' => $product->id,
+            'department_id' => $product->department_id,
+            'requester_id' => $request->user()->id,
+            'type' => StockRequisition::TYPE_STOCK_IN,
+            'quantity' => (int) $validated['quantity'],
+            'status' => StockRequisition::STATUS_PENDING,
+            'reason' => $validated['note'] ?: 'Inventory stock-in request',
+        ]);
 
-            $storeStockService = app(StoreStockService::class);
-            $store = $storeStockService->defaultStoreFor($product);
-            $storeSnapshot = null;
+        AuditLogService::record([
+            'action' => 'STOCK_IN_REQUESTED',
+            'module' => 'Inventory',
+            'model' => StockRequisition::class,
+            'model_id' => $requisition->id,
+            'department_id' => $requisition->department_id,
+            'reference' => 'RQ-' . str_pad((string) $requisition->id, 6, '0', STR_PAD_LEFT),
+            'description' => 'Requested stock in from inventory screen. Stock was not increased.',
+            'quantity_changed' => $requisition->quantity,
+        ]);
 
-            if ($store) {
-                $storeSnapshot = $storeStockService->increaseStoreOnly(
-                    $product,
-                    $store,
-                    (float) $request->quantity,
-                    (float) ($product->buy_price ?? 0)
-                );
-            }
-
-            Stock::create([
-                'product_id' => $product->id,
-                'department_id' => $product->department_id,
-                'type' => 'stock_in',
-                'quantity' => (int) $request->quantity,
-                'before_stock' => $before,
-                'after_stock' => $product->stock,
-                'note' => $request->note ?: 'Manual stock in',
-                'user_id' => auth()->id(),
-            ]);
-
-            StockMovement::create([
-                'product_id' => $product->id,
-                'department_id' => $product->department_id,
-                'branch_id' => auth()->user()->branch_id,
-                'user_id' => auth()->id(),
-                'to_store_id' => $store?->id,
-                'type' => 'STOCK_IN',
-                'movement_type' => 'STOCK_IN',
-                'quantity' => (int) $request->quantity,
-                'before_stock' => $before,
-                'after_stock' => $product->stock,
-                'quantity_before' => $storeSnapshot['before'] ?? $before,
-                'quantity_changed' => abs((float) $request->quantity),
-                'quantity_after' => $storeSnapshot['after'] ?? $product->stock,
-                'unit_cost' => $product->buy_price ?? 0,
-                'total_cost' => ($product->buy_price ?? 0) * (float) $request->quantity,
-                'performed_by' => auth()->id(),
-                'reason' => $request->note ?: 'Manual stock in',
-                'notes' => $request->note ?: 'Manual stock in',
-            ]);
-        });
-
-        return back()->with('success', 'Stock received successfully.');
+        return back()->with('success', 'Stock-in request submitted for approval. Stock was not increased yet.');
     }
 
     public function damage(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
             'quantity' => ['required', 'integer', 'min:1'],
             'note' => ['nullable', 'string', 'max:500'],
         ]);
 
-        try {
-            DB::transaction(function () use ($request) {
-                $product = Product::whereKey($request->product_id)
-                    ->lockForUpdate()
-                    ->firstOrFail();
+        $product = Product::findOrFail($validated['product_id']);
 
-                app(DepartmentAccessService::class)->authorize(
-                    $request->user(),
-                    $product->department_id
-                );
+        app(DepartmentAccessService::class)->authorize(
+            $request->user(),
+            $product->department_id
+        );
 
-                if ($product->stock < (int) $request->quantity) {
-                    throw new \Exception('Not enough stock to mark as damaged.');
-                }
+        $requisition = StockRequisition::create([
+            'product_id' => $product->id,
+            'department_id' => $product->department_id,
+            'requester_id' => $request->user()->id,
+            'type' => StockRequisition::TYPE_DAMAGED,
+            'quantity' => (int) $validated['quantity'],
+            'status' => StockRequisition::STATUS_PENDING,
+            'reason' => $validated['note'] ?: 'Damaged stock request',
+        ]);
 
-                $before = $product->stock;
-                $product->decrement('stock', (int) $request->quantity);
-                $product->refresh();
+        AuditLogService::record([
+            'action' => 'DAMAGE_REQUESTED',
+            'module' => 'Inventory',
+            'model' => StockRequisition::class,
+            'model_id' => $requisition->id,
+            'department_id' => $requisition->department_id,
+            'reference' => 'RQ-' . str_pad((string) $requisition->id, 6, '0', STR_PAD_LEFT),
+            'description' => 'Requested damaged-stock approval from inventory screen. Stock was not deducted.',
+            'quantity_changed' => -abs((float) $requisition->quantity),
+            'severity' => 'WARNING',
+        ]);
 
-                $storeStockService = app(StoreStockService::class);
-                $store = $storeStockService->defaultStoreFor($product);
-                $storeSnapshot = null;
-
-                if ($store) {
-                    $storeSnapshot = $storeStockService->decreaseStoreOnly(
-                        $product,
-                        $store,
-                        (float) $request->quantity,
-                        (float) ($product->buy_price ?? 0)
-                    );
-                }
-
-                Stock::create([
-                    'product_id' => $product->id,
-                    'department_id' => $product->department_id,
-                    'type' => 'damage',
-                    'quantity' => (int) $request->quantity,
-                    'before_stock' => $before,
-                    'after_stock' => $product->stock,
-                    'note' => $request->note ?: 'Damaged product',
-                    'user_id' => auth()->id(),
-                ]);
-
-                StockMovement::create([
-                    'product_id' => $product->id,
-                    'department_id' => $product->department_id,
-                    'branch_id' => auth()->user()->branch_id,
-                    'user_id' => auth()->id(),
-                    'from_store_id' => $store?->id,
-                    'type' => 'DAMAGE',
-                    'movement_type' => 'DAMAGE',
-                    'quantity' => (int) $request->quantity,
-                    'before_stock' => $before,
-                    'after_stock' => $product->stock,
-                    'quantity_before' => $storeSnapshot['before'] ?? $before,
-                    'quantity_changed' => -abs((float) $request->quantity),
-                    'quantity_after' => $storeSnapshot['after'] ?? $product->stock,
-                    'unit_cost' => $product->buy_price ?? 0,
-                    'total_cost' => ($product->buy_price ?? 0) * (float) $request->quantity,
-                    'performed_by' => auth()->id(),
-                    'reason' => $request->note ?: 'Damaged product',
-                    'notes' => $request->note ?: 'Damaged product',
-                ]);
-            });
-        } catch (\Throwable $exception) {
-            return back()->with('error', $exception->getMessage());
-        }
-
-        return back()->with('success', 'Damaged stock recorded.');
+        return back()->with('success', 'Damaged-stock request submitted for approval. Stock was not deducted yet.');
     }
 
     private function applyStockDateFilter($query, Request $request): void

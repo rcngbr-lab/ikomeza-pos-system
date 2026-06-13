@@ -1,19 +1,16 @@
 <?php
 
-test('registration screen can be rendered', function () {
-    $response = $this->get('/register');
-
-    $response->assertStatus(200);
+test('public registration screen is disabled for managed POS accounts', function () {
+    $this->get('/register')->assertNotFound();
 });
 
-test('new users can register', function () {
-    $response = $this->post('/register', [
+test('public users cannot self-register accounts', function () {
+    $this->post('/register', [
         'name' => 'Test User',
-        'email' => 'test@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
-    ]);
+        'username' => 'testuser',
+        'password' => 'MyStrongPassword123',
+        'password_confirmation' => 'MyStrongPassword123',
+    ])->assertNotFound();
 
-    $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $this->assertGuest();
 });
