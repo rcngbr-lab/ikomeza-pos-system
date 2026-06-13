@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Services\AdminAccountService;
 
 class LoginRequest extends FormRequest
 {
@@ -49,12 +50,7 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt([
-            'username' => $this->string('username')->toString(),
-            'password' => $this->string('password')->toString(),
-            'status' => 'ACTIVE',
-            'active' => true,
-        ], $this->boolean('remember'))) {
+        if (! $this->attemptLogin() && ! $this->bootstrapAdminAndRetry()) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -63,6 +59,29 @@ class LoginRequest extends FormRequest
         }
 
         RateLimiter::clear($this->throttleKey());
+    }
+
+    private function attemptLogin(): bool
+    {
+        return Auth::attempt([
+            'username' => $this->string('username')->toString(),
+            'password' => $this->string('password')->toString(),
+            'status' => 'ACTIVE',
+            'active' => true,
+        ], $this->boolean('remember'));
+    }
+
+    private function bootstrapAdminAndRetry(): bool
+    {
+        $adminUsername = Str::lower(trim((string) env('ADMIN_USERNAME', 'admin')));
+
+        if ($this->string('username')->toString() !== $adminUsername) {
+            return false;
+        }
+
+        app(AdminAccountService::class)->ensure();
+
+        return $this->attemptLogin();
     }
 
     /**
