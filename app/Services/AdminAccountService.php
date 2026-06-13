@@ -17,7 +17,7 @@ class AdminAccountService
             $this->envValue('ADMIN_USERNAME', 'admin'),
             $this->envValue('ADMIN_EMAIL', 'admin@agnesbar.com'),
             $this->envValue('ADMIN_NAME', 'Administrator'),
-            $this->adminPassword(),
+            $this->envValue('ADMIN_PASSWORD', ''),
             $adminRole
         );
 
@@ -85,8 +85,10 @@ class AdminAccountService
             'active' => true,
         ];
 
-        if ($isNewUser || filter_var(env('ADMIN_RESET_PASSWORD', false), FILTER_VALIDATE_BOOL)) {
-            $payload['password'] = Hash::make($password);
+        $shouldSetPassword = $isNewUser || filter_var(env('ADMIN_RESET_PASSWORD', false), FILTER_VALIDATE_BOOL);
+
+        if ($shouldSetPassword) {
+            $payload['password'] = Hash::make($this->adminPassword($password));
         }
 
         $user->forceFill($payload)->save();
@@ -109,15 +111,13 @@ class AdminAccountService
         return $value !== '' ? $value : $default;
     }
 
-    private function adminPassword(): string
+    private function adminPassword(string $password): string
     {
-        $password = $this->envValue('ADMIN_PASSWORD', '');
         $placeholderPasswords = [
             '',
             'password',
             'change-this-password',
             'changeme',
-            'mystrongpassword123',
         ];
 
         if (in_array(strtolower($password), $placeholderPasswords, true)) {
