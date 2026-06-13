@@ -106,13 +106,64 @@ class AdminAccountService
     {
         $value = env($key);
 
-        if (!is_string($value)) {
-            return $default;
+        if (is_string($value)) {
+            $value = trim($value);
+
+            if ($value !== '') {
+                return $value;
+            }
         }
 
-        $value = trim($value);
+        foreach ($this->environmentValues() as $candidate) {
+            $parsedValue = $this->parseEmbeddedEnvValue($candidate, $key);
 
-        return $value !== '' ? $value : $default;
+            if ($parsedValue !== null) {
+                return $parsedValue;
+            }
+        }
+
+        return $default;
+    }
+
+    /**
+     * Railway's variable editor can accidentally receive multiple KEY=value
+     * lines inside one variable. This keeps admin bootstrap recoverable without
+     * exposing a password reset route.
+     */
+    private function parseEmbeddedEnvValue(mixed $candidate, string $key): ?string
+    {
+        if (!is_string($candidate) || !str_contains($candidate, $key . '=')) {
+            return null;
+        }
+
+        foreach (preg_split('/\R/', $candidate) ?: [] as $line) {
+            $line = trim($line);
+
+            if (!str_starts_with($line, $key . '=')) {
+                continue;
+            }
+
+            $value = trim(substr($line, strlen($key) + 1), " \t\n\r\0\x0B\"'");
+
+            return $value !== '' ? $value : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<int|string, mixed>
+     */
+    private function environmentValues(): array
+    {
+        $values = array_merge($_ENV, $_SERVER);
+        $getenvValues = getenv();
+
+        if (is_array($getenvValues)) {
+            $values = array_merge($values, $getenvValues);
+        }
+
+        return $values;
     }
 
     private function shouldReplaceDefaultPassword(User $user, string $password): bool
