@@ -85,7 +85,9 @@ class AdminAccountService
             'active' => true,
         ];
 
-        $shouldSetPassword = $isNewUser || filter_var(env('ADMIN_RESET_PASSWORD', false), FILTER_VALIDATE_BOOL);
+        $shouldSetPassword = $isNewUser
+            || filter_var(env('ADMIN_RESET_PASSWORD', false), FILTER_VALIDATE_BOOL)
+            || $this->shouldReplaceDefaultPassword($user, $password);
 
         if ($shouldSetPassword) {
             $payload['password'] = Hash::make($this->adminPassword($password));
@@ -111,16 +113,24 @@ class AdminAccountService
         return $value !== '' ? $value : $default;
     }
 
+    private function shouldReplaceDefaultPassword(User $user, string $password): bool
+    {
+        if (!$user->exists || $this->isPlaceholderPassword($password)) {
+            return false;
+        }
+
+        foreach (['MyStrongPassword123', 'password', 'admin123'] as $defaultPassword) {
+            if (Hash::check($defaultPassword, $user->password)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function adminPassword(string $password): string
     {
-        $placeholderPasswords = [
-            '',
-            'password',
-            'change-this-password',
-            'changeme',
-        ];
-
-        if (in_array(strtolower($password), $placeholderPasswords, true)) {
+        if ($this->isPlaceholderPassword($password)) {
             if (app()->environment('production')) {
                 throw new \RuntimeException('ADMIN_PASSWORD must be set to a strong, private value before seeding production.');
             }
@@ -129,5 +139,15 @@ class AdminAccountService
         }
 
         return $password;
+    }
+
+    private function isPlaceholderPassword(string $password): bool
+    {
+        return in_array(strtolower(trim($password)), [
+            '',
+            'password',
+            'change-this-password',
+            'changeme',
+        ], true);
     }
 }
