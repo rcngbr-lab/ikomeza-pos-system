@@ -1,14 +1,14 @@
-<form method="GET" action="{{ $action }}" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-    <div class="grid gap-3 md:grid-cols-5">
+<form method="GET" action="{{ $action }}" class="dense-toolbar">
+    <div class="grid flex-1 gap-2 md:grid-cols-5">
         <input
             type="search"
             name="search"
             value="{{ request('search') }}"
             placeholder="Search product, supplier, reference..."
-            class="rounded-xl border-slate-200 bg-slate-50 text-sm"
+            class="dense-input"
         >
 
-        <select name="department_id" class="rounded-xl border-slate-200 bg-slate-50 text-sm">
+        <select name="department_id" class="dense-select">
             <option value="">All Departments</option>
             @foreach($departments as $department)
                 <option value="{{ $department->id }}" @selected((int) $selectedDepartmentId === (int) $department->id)>
@@ -17,7 +17,7 @@
             @endforeach
         </select>
 
-        <select name="store_id" class="rounded-xl border-slate-200 bg-slate-50 text-sm">
+        <select name="store_id" class="dense-select">
             <option value="">All Stores</option>
             @foreach($stores as $store)
                 <option value="{{ $store->id }}" @selected((int) $selectedStoreId === (int) $store->id)>
@@ -26,7 +26,7 @@
             @endforeach
         </select>
 
-        <select name="filter" class="rounded-xl border-slate-200 bg-slate-50 text-sm">
+        <select name="filter" class="dense-select">
             <option value="">All Time</option>
             <option value="today" @selected(request('filter') === 'today')>Today</option>
             <option value="yesterday" @selected(request('filter') === 'yesterday')>Yesterday</option>
@@ -37,15 +37,10 @@
             <option value="year" @selected(request('filter') === 'year')>This Year</option>
         </select>
 
-        <button class="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-black text-white shadow-sm shadow-indigo-200">
-            Apply Filters
-        </button>
-    </div>
-
-    <div class="mt-3 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-        <input type="date" name="start_date" value="{{ request('start_date') }}" class="rounded-xl border-slate-200 bg-slate-50 text-sm">
-        <input type="date" name="end_date" value="{{ request('end_date') }}" class="rounded-xl border-slate-200 bg-slate-50 text-sm">
-        <a href="{{ $action }}" class="rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-center text-sm font-black text-slate-700">
+        <button class="dense-btn-primary">Apply</button>
+        <input type="date" name="start_date" value="{{ request('start_date') }}" class="dense-input">
+        <input type="date" name="end_date" value="{{ request('end_date') }}" class="dense-input">
+        <a href="{{ $action }}" class="dense-btn-soft">
             Reset
         </a>
     </div>

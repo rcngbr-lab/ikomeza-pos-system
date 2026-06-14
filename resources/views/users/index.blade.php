@@ -1,179 +1,75 @@
 @extends('layouts.app')
 
 @section('content')
-
-<div class="p-4 md:p-6">
-
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-
+<div class="dense-page">
+    <div class="dense-header">
         <div>
-
-            <h1 class="text-2xl font-bold text-gray-800">
-                Users
-            </h1>
-
-            <p class="text-sm text-gray-500">
-                Manage staff accounts
-            </p>
-
+            <p class="dense-eyebrow">Security</p>
+            <h1 class="dense-title">Users</h1>
+            <p class="dense-subtitle">Staff accounts, username login, branch, department, role, and status.</p>
         </div>
 
-        <a
-            href="{{ route('users.create') }}"
-            class="inline-flex items-center justify-center min-h-[48px] px-5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition"
-        >
-            + Create User
-        </a>
-
+        <a href="{{ route('users.create') }}" class="dense-btn-primary">+ Create User</a>
     </div>
 
-    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+    <section class="dense-card">
+        <div class="dense-card-header">
+            <div>
+                <h2 class="text-sm font-black text-slate-950">Staff Register</h2>
+                <p class="text-xs text-slate-500">Permissions are assigned from the selected role during create/edit.</p>
+            </div>
+            <p class="text-xs font-bold text-slate-500">{{ $users->total() }} users</p>
+        </div>
 
-        <div class="overflow-x-auto">
-
-            <table class="w-full min-w-[800px]">
-
-                <thead class="bg-gray-100">
-
+        <div class="dense-table-wrap">
+            <table class="dense-table min-w-[900px]">
+                <thead>
                     <tr>
-
-                        <th class="px-4 py-4 text-left text-sm font-semibold">
-                            Name
-                        </th>
-
-                        <th class="px-4 py-4 text-left text-sm font-semibold">
-                            Username
-                        </th>
-
-                        <th class="px-4 py-4 text-left text-sm font-semibold">
-                            Role
-                        </th>
-
-                        <th class="px-4 py-4 text-left text-sm font-semibold">
-                            Department
-                        </th>
-
-                        <th class="px-4 py-4 text-left text-sm font-semibold">
-                            Branch
-                        </th>
-
-                        <th class="px-4 py-4 text-left text-sm font-semibold">
-                            Status
-                        </th>
-
-                        <th class="px-4 py-4 text-left text-sm font-semibold">
-                            Action
-                        </th>
-
+                        <th>Name</th>
+                        <th>Username</th>
+                        <th>Role</th>
+                        <th>Department</th>
+                        <th>Branch</th>
+                        <th>Status</th>
+                        <th class="text-right">Actions</th>
                     </tr>
-
                 </thead>
-
                 <tbody>
-
                     @forelse($users as $user)
-
-                        <tr class="border-t">
-
-                            <td class="px-4 py-4">
-                                <div class="font-semibold text-slate-900">
-                                    {{ $user->name }}
-                                </div>
-                                <div class="text-xs text-slate-500">
-                                    {{ !str_ends_with(strtolower((string) $user->email), '@ikomeza.local') ? $user->email : 'No contact email' }}
-                                </div>
-                            </td>
-
-                            <td class="px-4 py-4">
-                                <span class="px-3 py-1 text-xs rounded-full bg-indigo-100 text-indigo-700">
-                                    {{ $user->username ?? '-' }}
-                                </span>
-                            </td>
-
-                            <td class="px-4 py-4">
-                                <span class="px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-700">
-                                    {{ $user->roles->first()?->name ?? $user->roleLabel() }}
-                                </span>
-                            </td>
-
-                            <td class="px-4 py-4">
-                                <span class="px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700">
-                                    {{ $user->department->name ?? 'All' }}
-                                </span>
-                            </td>
-
-                            <td class="px-4 py-4">
-                                <span class="px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700">
-                                    {{ $user->branch->name ?? 'N/A' }}
-                                </span>
-                            </td>
-
-                            <td class="px-4 py-4">
-
-                                @if($user->status === 'ACTIVE')
-
-                                    <span class="px-3 py-1 text-xs rounded-full bg-green-100 text-green-700">
-                                        ACTIVE
-                                    </span>
-
-                                @elseif($user->status === 'INACTIVE')
-
-                                    <span class="px-3 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700">
-                                        INACTIVE
-                                    </span>
-
-                                @else
-
-                                    <span class="px-3 py-1 text-xs rounded-full bg-red-100 text-red-700">
-                                        SUSPENDED
-                                    </span>
-
-                                @endif
-
-                            </td>
-
-                            <td class="px-4 py-4">
-
-                                <a
-                                    href="{{ route('users.edit', $user) }}"
-                                    class="inline-flex items-center justify-center min-h-[40px] px-4 bg-gray-900 text-white rounded-lg text-sm"
-                                >
-                                    Edit
-                                </a>
-
-                            </td>
-
-                        </tr>
-
-                    @empty
-
                         <tr>
-
-                            <td
-                                colspan="7"
-                                class="px-4 py-10 text-center text-gray-500"
-                            >
-                                No users found
+                            <td>
+                                <p class="font-black text-slate-950">{{ $user->name }}</p>
+                                <p class="text-[11px] text-slate-500">
+                                    {{ !str_ends_with(strtolower((string) $user->email), '@ikomeza.local') ? $user->email : 'No contact email' }}
+                                </p>
                             </td>
-
+                            <td><span class="dense-badge bg-indigo-100 text-indigo-700">{{ $user->username ?? '-' }}</span></td>
+                            <td><span class="dense-badge bg-blue-100 text-blue-700">{{ $user->roles->first()?->name ?? $user->roleLabel() }}</span></td>
+                            <td>{{ $user->department->name ?? 'All' }}</td>
+                            <td>{{ $user->branch->name ?? 'N/A' }}</td>
+                            <td>
+                                @if($user->status === 'ACTIVE')
+                                    <span class="dense-badge bg-emerald-100 text-emerald-700">ACTIVE</span>
+                                @elseif($user->status === 'INACTIVE')
+                                    <span class="dense-badge bg-amber-100 text-amber-700">INACTIVE</span>
+                                @else
+                                    <span class="dense-badge bg-rose-100 text-rose-700">SUSPENDED</span>
+                                @endif
+                            </td>
+                            <td class="text-right">
+                                <a href="{{ route('users.edit', $user) }}" class="dense-btn-dark">Edit</a>
+                            </td>
                         </tr>
-
+                    @empty
+                        <tr><td colspan="7" class="dense-empty">No users found.</td></tr>
                     @endforelse
-
                 </tbody>
-
             </table>
-
         </div>
 
-    </div>
-
-    <div class="mt-6">
-
-        {{ $users->links() }}
-
-    </div>
-
+        <div class="border-t border-slate-100 px-3 py-2">
+            {{ $users->onEachSide(1)->links() }}
+        </div>
+    </section>
 </div>
-
 @endsection

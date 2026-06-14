@@ -36,6 +36,9 @@ class InventoryController extends Controller
         */
 
         $filter = $request->filter;
+        $search = trim((string) $request->input('search', ''));
+        $sort = $request->input('sort', 'name');
+        $direction = $request->input('direction', 'asc') === 'desc' ? 'desc' : 'asc';
 
         $stockHistory = Stock::with('product.department', 'department', 'user')
             ->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId));
@@ -101,10 +104,31 @@ class InventoryController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $products = Product::with('category', 'department')
+        $productsQuery = Product::with('category', 'department')
             ->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))
-            ->latest()
-            ->paginate(10);
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($productQuery) use ($search) {
+                    $productQuery->where('name', 'like', '%' . $search . '%')
+                        ->orWhere('barcode', 'like', '%' . $search . '%')
+                        ->orWhere('product_code', 'like', '%' . $search . '%')
+                        ->orWhereHas('category', fn ($category) => $category->where('name', 'like', '%' . $search . '%'))
+                        ->orWhereHas('department', fn ($department) => $department->where('name', 'like', '%' . $search . '%'));
+                });
+            });
+
+        match ($sort) {
+            'category' => $productsQuery->orderBy('category_id', $direction),
+            'stock' => $productsQuery->orderBy('stock', $direction),
+            'cost' => $productsQuery->orderBy('buy_price', $direction),
+            'price' => $productsQuery->orderBy('selling_price', $direction),
+            'value' => $productsQuery->orderByRaw('(buy_price * stock) ' . $direction),
+            'status' => $productsQuery->orderBy('stock', $direction),
+            default => $productsQuery->orderBy('name', $direction),
+        };
+
+        $products = $productsQuery
+            ->paginate(15)
+            ->withQueryString();
         $totalProducts = Product::when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))->count();
 
         $allProducts = Product::with('department')
@@ -161,7 +185,8 @@ class InventoryController extends Controller
 
         $stockHistory = $stockHistory
             ->latest()
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         return view(
             'inventory.index',
@@ -175,6 +200,9 @@ class InventoryController extends Controller
                 'allProducts',
                 'departments',
                 'selectedDepartmentId',
+                'search',
+                'sort',
+                'direction',
             )
         );
     }

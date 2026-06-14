@@ -322,30 +322,30 @@
 @endphp
 
 <nav
-    class="mobile-bottom-nav fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 px-2 pt-2 shadow-[0_-14px_35px_rgba(15,23,42,0.14)] backdrop-blur-xl"
-    style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));"
+    class="mobile-bottom-nav fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 px-1.5 pt-0.5 shadow-[0_-10px_28px_rgba(15,23,42,0.12)] backdrop-blur-xl"
+    style="padding-bottom: max(0.25rem, env(safe-area-inset-bottom));"
 >
     <div class="mx-auto max-w-3xl">
-        <div class="mobile-nav-shell grid grid-cols-5 items-end gap-1 rounded-[1.35rem] border border-slate-200 bg-slate-950 p-1.5 shadow-lg shadow-slate-950/20">
+        <div class="mobile-nav-shell grid grid-cols-5 items-end gap-1 rounded-2xl border border-slate-200 bg-slate-950 p-0.5 shadow-lg shadow-slate-950/20">
             @foreach($primaryItems as $item)
                 @php $active = $isActive($item); @endphp
 
                 <a
                     href="{{ route($item['route']) }}"
-                    class="mobile-nav-item flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-2xl px-1.5 text-[10px] font-black transition active:scale-95 {{ $active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-950/40' : 'text-slate-300 hover:bg-slate-900 hover:text-white' }}"
+                    class="mobile-nav-item flex min-h-[46px] flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[9px] font-black transition active:scale-95 {{ $active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-950/40' : 'text-slate-300 hover:bg-slate-900 hover:text-white' }}"
                     aria-label="{{ $item['label'] }}"
                 >
-                    {!! $icon($item['icon'], 'h-5 w-5') !!}
+                    {!! $icon($item['icon'], 'h-4 w-4') !!}
                     <span class="max-w-full truncate leading-none">{{ $item['label'] }}</span>
                 </a>
             @endforeach
 
             <details class="group relative">
                 <summary
-                    class="mobile-nav-more flex min-h-[56px] cursor-pointer list-none flex-col items-center justify-center gap-1 rounded-2xl px-1.5 text-[10px] font-black text-slate-300 transition active:scale-95 group-open:bg-white group-open:text-slate-950 [&::-webkit-details-marker]:hidden"
+                    class="mobile-nav-more flex min-h-[46px] cursor-pointer list-none flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[9px] font-black text-slate-300 transition active:scale-95 group-open:bg-white group-open:text-slate-950 [&::-webkit-details-marker]:hidden"
                     aria-label="More navigation"
                 >
-                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="5" cy="12" r="1.5"/>
                         <circle cx="12" cy="12" r="1.5"/>
                         <circle cx="19" cy="12" r="1.5"/>

@@ -137,17 +137,18 @@
 @endphp
 
 <div class="flex h-full w-full flex-col bg-slate-950 text-slate-200">
-    <div class="border-b border-slate-800 px-6 py-5">
-        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">
+    <div class="border-b border-slate-800 px-3 py-3" :class="sidebarCollapsed ? 'text-center' : 'px-4 text-left'">
+        <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-500" x-show="!sidebarCollapsed">
             Enterprise POS
         </p>
-        <h1 class="mt-2 text-2xl font-black tracking-tight text-white">
-            IKOMEZA
+        <h1 class="text-xl font-black tracking-tight text-white" :class="sidebarCollapsed ? 'mt-0 text-base' : 'mt-1'">
+            <span x-show="!sidebarCollapsed">IKOMEZA</span>
+            <span x-show="sidebarCollapsed">IK</span>
         </h1>
     </div>
 
-    <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-        <p class="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+    <nav class="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
+        <p class="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500" x-show="!sidebarCollapsed">
             Operations
         </p>
 
@@ -158,44 +159,48 @@
 
             <a
                 href="{{ route($link['route']) }}"
-                class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition {{ $active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-950/30' : 'text-slate-300 hover:bg-slate-900 hover:text-white' }}"
+                title="{{ $link['label'] }}"
+                class="flex items-center gap-2.5 rounded-lg px-2 py-2 text-xs font-black transition {{ $active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-950/30' : 'text-slate-300 hover:bg-slate-900 hover:text-white' }}"
+                :class="sidebarCollapsed ? 'justify-center px-2' : ''"
             >
-                <span class="flex h-8 min-w-8 items-center justify-center rounded-lg {{ $active ? 'bg-white/15' : 'bg-slate-900 text-slate-400' }} text-[11px] font-black">
+                <span class="flex h-7 min-w-7 items-center justify-center rounded-md {{ $active ? 'bg-white/15' : 'bg-slate-900 text-slate-400' }} text-[10px] font-black">
                     {{ $link['mark'] }}
                 </span>
-                <span class="truncate">
+                <span class="truncate" x-show="!sidebarCollapsed">
                     {{ $link['label'] }}
                 </span>
             </a>
         @endforeach
     </nav>
 
-    <div class="border-t border-slate-800 p-4">
-        <div class="flex items-center gap-3">
-            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-600 font-black text-white">
+    <div class="border-t border-slate-800 p-3">
+        <div class="flex items-center gap-2.5" :class="sidebarCollapsed ? 'justify-center' : ''">
+            <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-sm font-black text-white">
                 {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
             </div>
-            <div class="min-w-0">
-                <p class="truncate text-sm font-semibold text-white">
+            <div class="min-w-0" x-show="!sidebarCollapsed">
+                <p class="truncate text-xs font-black text-white">
                     {{ auth()->user()->name }}
                 </p>
-                <p class="truncate text-xs text-slate-400">
+                <p class="truncate text-[11px] text-slate-400">
                     {{ auth()->user()->roleLabel() }}
                 </p>
             </div>
         </div>
 
-        <form method="POST" action="{{ route('logout') }}" class="mt-4">
+        <form method="POST" action="{{ route('logout') }}" class="mt-3">
             @csrf
 
             <button
                 type="submit"
-                class="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-3 py-3 text-sm font-black text-slate-200 transition hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-100"
+                class="flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-900 px-2 text-xs font-black text-slate-200 transition hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-100"
+                :class="sidebarCollapsed ? 'px-2' : ''"
+                title="Logout"
             >
-                <span class="flex h-7 min-w-7 items-center justify-center rounded-lg bg-slate-950 text-[10px] font-black text-slate-400">
+                <span class="flex h-6 min-w-6 items-center justify-center rounded-md bg-slate-950 text-[9px] font-black text-slate-400">
                     OUT
                 </span>
-                <span>Logout</span>
+                <span x-show="!sidebarCollapsed">Logout</span>
             </button>
         </form>
     </div>

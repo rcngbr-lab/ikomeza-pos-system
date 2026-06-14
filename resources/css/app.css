@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+    [x-cloak] {
+        display: none !important;
+    }
+
     html {
         scroll-behavior: smooth;
     }
@@ -13,6 +17,119 @@
 }
 
 @layer components {
+    .dense-page {
+        @apply mx-auto max-w-[1920px] space-y-3 pb-20 lg:pb-2;
+    }
+
+    .dense-header {
+        @apply flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between;
+    }
+
+    .dense-eyebrow {
+        @apply text-[10px] font-black uppercase tracking-widest text-indigo-600;
+    }
+
+    .dense-title {
+        @apply text-xl font-black leading-tight tracking-tight text-slate-950 sm:text-2xl;
+    }
+
+    .dense-subtitle {
+        @apply mt-0.5 text-xs font-semibold text-slate-500;
+    }
+
+    .dense-toolbar {
+        @apply flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm md:flex-row md:items-center;
+    }
+
+    .dense-input,
+    .dense-select {
+        @apply h-9 rounded-lg border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 focus:border-indigo-500 focus:ring-indigo-500;
+    }
+
+    .dense-btn {
+        @apply inline-flex h-9 items-center justify-center rounded-lg px-3 text-xs font-black transition active:scale-[0.98];
+    }
+
+    .dense-btn-primary {
+        @apply inline-flex h-9 items-center justify-center rounded-lg bg-indigo-600 px-3 text-xs font-black text-white shadow-sm shadow-indigo-600/15 transition hover:bg-indigo-700 active:scale-[0.98];
+    }
+
+    .dense-btn-dark {
+        @apply inline-flex h-9 items-center justify-center rounded-lg bg-slate-950 px-3 text-xs font-black text-white transition hover:bg-slate-800 active:scale-[0.98];
+    }
+
+    .dense-btn-soft {
+        @apply inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700 active:scale-[0.98];
+    }
+
+    .dense-btn-danger {
+        @apply inline-flex h-9 items-center justify-center rounded-lg bg-rose-600 px-3 text-xs font-black text-white transition hover:bg-rose-700 active:scale-[0.98];
+    }
+
+    .dense-chip {
+        @apply inline-flex h-8 items-center justify-center rounded-full border border-slate-200 bg-white px-3 text-[11px] font-black text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700;
+    }
+
+    .dense-chip-active {
+        @apply border-slate-950 bg-slate-950 text-white hover:border-slate-950 hover:text-white;
+    }
+
+    .dense-stat-row {
+        @apply grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-6;
+    }
+
+    .dense-stat {
+        @apply rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm;
+    }
+
+    .dense-stat-label {
+        @apply text-[10px] font-black uppercase tracking-wide text-slate-500;
+    }
+
+    .dense-stat-value {
+        @apply mt-1 text-lg font-black leading-tight text-slate-950;
+    }
+
+    .dense-card {
+        @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+    }
+
+    .dense-card-header {
+        @apply flex flex-col gap-2 border-b border-slate-100 px-3 py-2 sm:flex-row sm:items-center sm:justify-between;
+    }
+
+    .dense-table-wrap {
+        @apply overflow-x-auto;
+    }
+
+    .dense-table {
+        @apply w-full min-w-[760px] text-left text-xs;
+    }
+
+    .dense-table thead {
+        @apply bg-slate-950 text-white;
+    }
+
+    .dense-table th {
+        @apply px-3 py-2 text-[10px] font-black uppercase tracking-wide;
+    }
+
+    .dense-table td {
+        @apply border-t border-slate-100 px-3 py-2 align-middle;
+    }
+
+    .dense-table tbody tr {
+        @apply transition hover:bg-slate-50;
+    }
+
+    .dense-badge {
+        @apply inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide;
+    }
+
+    .dense-empty {
+        @apply px-3 py-8 text-center text-xs font-semibold text-slate-400;
+    }
+
     .touch-scroll {
         -webkit-overflow-scrolling: touch;
         overscroll-behavior: contain;
@@ -25,7 +142,7 @@
         }
 
         main > div {
-            padding: 0.625rem !important;
+            padding: 0.5rem !important;
         }
 
         h1,
@@ -123,19 +240,19 @@
 
         .mobile-bottom-nav {
             padding-inline: 0.35rem;
-            padding-top: 0.35rem;
+            padding-top: 0.15rem;
         }
 
         .mobile-nav-shell {
-            border-radius: 1rem !important;
+            border-radius: 0.95rem !important;
             gap: 0.2rem !important;
-            padding: 0.25rem !important;
+            padding: 0.15rem !important;
         }
 
         .mobile-nav-item,
         .mobile-nav-more {
-            min-height: 3rem !important;
-            border-radius: 0.8rem !important;
+            min-height: 2.65rem !important;
+            border-radius: 0.75rem !important;
             font-size: 0.625rem !important;
             line-height: 1 !important;
         }
@@ -171,6 +288,10 @@
             padding-bottom: 0.25rem;
         }
 
+        .pos-floating-cart {
+            bottom: max(5rem, calc(env(safe-area-inset-bottom) + 4.65rem)) !important;
+        }
+
         .pos-workspace {
             grid-template-columns: minmax(0, 1fr) !important;
             width: 100% !important;
@@ -194,12 +315,6 @@
             min-width: 0;
             width: 100%;
             max-width: 100%;
-        }
-
-        .pos-cart-panel {
-            position: sticky;
-            top: 4.1rem;
-            z-index: 20;
         }
 
         .pos-cart-items {
