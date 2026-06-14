@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Product;
 use App\Models\Customer;
 use App\Models\CustomerLedgerEntry;
+use App\Models\DiscountApproval;
 use App\Models\Payment;
 use App\Models\Recipe;
 use App\Models\RestaurantTable;
@@ -59,10 +60,31 @@ class SaleService
             $subtotal = collect($cart)->sum(
                 fn ($item) => (float) $item['price'] * (float) $item['quantity']
             );
-            $this->authorizeDiscount($user, $subtotal, $discount);
+            $this->authorizeDiscount($user, $subtotal, $discount, $discountReason);
 
             $taxService = app(TaxService::class);
-            $saleTotals = $taxService->saleTotals($subtotal, $discount);
+            $taxableProductIds = $this->taxableProductIds($cart);
+            $taxableSubtotal = collect($cart)->sum(function ($item) use ($taxableProductIds) {
+                $productId = (int) ($item['product_id'] ?? $item['id']);
+
+                return in_array($productId, $taxableProductIds, true)
+                    ? (float) $item['price'] * (float) $item['quantity']
+                    : 0;
+            });
+            $nonTaxableSubtotal = max($subtotal - $taxableSubtotal, 0);
+            $taxableDiscount = $subtotal > 0 ? $discount * ($taxableSubtotal / $subtotal) : 0;
+            $nonTaxableDiscount = max($discount - $taxableDiscount, 0);
+            $taxableTotals = $taxService->saleTotals($taxableSubtotal, $taxableDiscount);
+            $nonTaxableNet = max($nonTaxableSubtotal - $nonTaxableDiscount, 0);
+            $saleTotals = array_merge($taxableTotals, [
+                'subtotal' => round($subtotal, 2),
+                'discount' => round($discount, 2),
+                'grand_total' => round($taxableTotals['grand_total'] + $nonTaxableNet, 2),
+                'non_taxable_amount' => round($nonTaxableNet, 2),
+            ]);
+            $saleTotals['fiscal_payload']['total'] = $saleTotals['grand_total'];
+            $saleTotals['fiscal_payload']['taxable_amount'] = $saleTotals['taxable_amount'];
+            $saleTotals['fiscal_payload']['non_taxable_amount'] = $saleTotals['non_taxable_amount'];
             $tax = $saleTotals['tax'];
             $grandTotal = $saleTotals['grand_total'];
             $payments = $this->normalizedPayments($payments, $paymentMethod, $amountPaid, $grandTotal);
@@ -124,7 +146,29 @@ class SaleService
                 'notes' => $notes,
                 'fiscal_status' => ($taxService->setting('fiscal_ebm_mode', 'MANUAL') === 'MANUAL') ? 'MANUAL_PENDING' : 'NOT_SUBMITTED',
                 'fiscal_payload' => $saleTotals['fiscal_payload'],
+                'tax_summary' => [
+                    'vat_rate' => $saleTotals['vat_rate'],
+                    'taxable_amount' => $saleTotals['taxable_amount'],
+                    'non_taxable_amount' => $saleTotals['non_taxable_amount'],
+                    'vat_amount' => $tax,
+                    'prices_include_vat' => $saleTotals['prices_include_vat'],
+                ],
             ]);
+
+            if ($discount > 0) {
+                DiscountApproval::create([
+                    'sale_id' => $sale->id,
+                    'requested_by' => $user->id,
+                    'approved_by' => $sale->discount_approved_by,
+                    'branch_id' => $sale->branch_id,
+                    'subtotal' => $subtotal,
+                    'discount_amount' => $discount,
+                    'discount_percent' => $subtotal > 0 ? ($discount / $subtotal) * 100 : 0,
+                    'status' => 'AUTO_APPROVED_WITHIN_LIMIT',
+                    'reason' => $discountReason,
+                    'approved_at' => now(),
+                ]);
+            }
 
             foreach ($payments as $index => $payment) {
                 $paymentChange = $index === 0 ? $changeAmount : 0;
@@ -133,11 +177,18 @@ class SaleService
                     'sale_id' => $sale->id,
                     'shift_id' => $shift->id,
                     'customer_id' => $customer?->id,
+                    'branch_id' => $sale->branch_id,
                     'received_by' => $user->id,
                     'method' => $payment['method'],
                     'amount' => $payment['amount'],
                     'change_amount' => $paymentChange,
                     'reference' => $payment['reference'] ?? null,
+                    'provider_name' => $payment['provider_name'] ?? $this->defaultProviderFor($payment['method']),
+                    'payment_reference' => $payment['payment_reference'] ?? $payment['reference'] ?? null,
+                    'transaction_id' => $payment['transaction_id'] ?? null,
+                    'payment_status' => $payment['payment_status'] ?? Payment::STATUS_COMPLETED,
+                    'reconciliation_status' => $payment['method'] === 'CASH' ? 'NOT_REQUIRED' : 'UNMATCHED',
+                    'idempotency_key' => $payment['idempotency_key'] ?? $this->paymentIdempotencyKey($sale->receipt_no, $index, $payment),
                     'status' => Payment::STATUS_COMPLETED,
                     'paid_at' => now(),
                     'metadata' => $payment['metadata'] ?? null,
@@ -190,7 +241,15 @@ class SaleService
 
                 $lineSubtotal = $quantity * $price;
                 $lineDiscount = $subtotal > 0 ? ($discount * ($lineSubtotal / $subtotal)) : 0;
-                $lineTotals = $taxService->saleTotals($lineSubtotal, $lineDiscount);
+                $isTaxable = $this->productIsTaxable($product);
+                $lineTotals = $isTaxable
+                    ? $taxService->saleTotals($lineSubtotal, $lineDiscount)
+                    : [
+                        'tax' => 0,
+                        'taxable_amount' => 0,
+                        'vat_rate' => 0,
+                        'grand_total' => max($lineSubtotal - $lineDiscount, 0),
+                    ];
 
                 SaleItem::create([
                     'sale_id' => $sale->id,
@@ -206,6 +265,8 @@ class SaleService
                     'discount' => $lineDiscount,
                     'tax' => $lineTotals['tax'],
                     'taxable_amount' => $lineTotals['taxable_amount'],
+                    'is_taxable' => $isTaxable,
+                    'tax_category' => $product->tax_category ?? ($isTaxable ? 'VATABLE' : 'EXEMPT'),
                     'vat_rate' => $lineTotals['vat_rate'],
                     'vat_amount' => $lineTotals['tax'],
                     'subtotal' => $lineSubtotal,
@@ -346,6 +407,11 @@ class SaleService
                     'method' => Sale::normalizePaymentMethod($payment['method'] ?? null),
                     'amount' => round(max((float) ($payment['amount'] ?? 0), 0), 2),
                     'reference' => $payment['reference'] ?? null,
+                    'provider_name' => $payment['provider_name'] ?? null,
+                    'payment_reference' => $payment['payment_reference'] ?? null,
+                    'transaction_id' => $payment['transaction_id'] ?? null,
+                    'payment_status' => $payment['payment_status'] ?? Payment::STATUS_COMPLETED,
+                    'idempotency_key' => $payment['idempotency_key'] ?? null,
                     'metadata' => $payment['metadata'] ?? null,
                 ];
             })
@@ -366,14 +432,68 @@ class SaleService
             'method' => $fallbackMethod,
             'amount' => round(max($amount, 0), 2),
             'reference' => null,
+            'provider_name' => null,
+            'payment_reference' => null,
+            'transaction_id' => null,
+            'payment_status' => Payment::STATUS_COMPLETED,
+            'idempotency_key' => null,
             'metadata' => null,
         ]];
     }
 
-    private function authorizeDiscount($user, float $subtotal, float $discount): void
+    private function taxableProductIds(array $cart): array
+    {
+        $productIds = collect($cart)
+            ->map(fn ($item) => (int) ($item['product_id'] ?? $item['id']))
+            ->filter()
+            ->unique()
+            ->values();
+
+        return Product::whereIn('id', $productIds)
+            ->get()
+            ->filter(fn (Product $product) => $this->productIsTaxable($product))
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    private function productIsTaxable(Product $product): bool
+    {
+        return (bool) ($product->is_taxable ?? true)
+            && strtoupper((string) ($product->tax_category ?? 'VATABLE')) !== 'EXEMPT';
+    }
+
+    private function defaultProviderFor(string $method): ?string
+    {
+        return match (Sale::normalizePaymentMethod($method)) {
+            'MOMO' => 'MTN MoMo',
+            'AIRTEL_MONEY' => 'Airtel Money',
+            'VISA', 'MASTER_CARD' => 'Card Processor',
+            'BANK_TRANSFER' => 'Bank',
+            default => null,
+        };
+    }
+
+    private function paymentIdempotencyKey(string $receiptNo, int $index, array $payment): string
+    {
+        return hash('sha256', implode('|', [
+            $receiptNo,
+            $index,
+            $payment['method'] ?? 'CASH',
+            $payment['amount'] ?? 0,
+            $payment['payment_reference'] ?? $payment['reference'] ?? '',
+            $payment['transaction_id'] ?? '',
+        ]));
+    }
+
+    private function authorizeDiscount($user, float $subtotal, float $discount, ?string $reason = null): void
     {
         if ($discount <= 0) {
             return;
+        }
+
+        if (blank($reason)) {
+            throw new \Exception('Discount reason is required.');
         }
 
         if ($discount > $subtotal) {

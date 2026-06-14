@@ -9,6 +9,7 @@ class StoreIssueItem extends Model
     protected $fillable = [
         'store_issue_id',
         'product_id',
+        'branch_id',
         'quantity_requested',
         'quantity_issued',
         'quantity_received',

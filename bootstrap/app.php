@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Support\Facades\Schema;
 
 return Application::configure(
     basePath: dirname(__DIR__)
@@ -41,7 +42,28 @@ return Application::configure(
 
 ->withExceptions(function (Exceptions $exceptions): void {
 
-    //
+    $exceptions->report(function (Throwable $exception) {
+        try {
+            if (Schema::hasTable('error_events')) {
+                \App\Models\ErrorEvent::create([
+                    'user_id' => auth()->id(),
+                    'branch_id' => auth()->user()?->branch_id,
+                    'source' => 'APPLICATION',
+                    'severity' => 'ERROR',
+                    'message' => str($exception->getMessage())->limit(500)->toString(),
+                    'context' => json_encode([
+                        'class' => $exception::class,
+                        'file' => $exception->getFile(),
+                        'line' => $exception->getLine(),
+                        'url' => request()?->fullUrl(),
+                    ], JSON_UNESCAPED_SLASHES),
+                    'status' => 'OPEN',
+                ]);
+            }
+        } catch (Throwable) {
+            //
+        }
+    });
 
 })
 

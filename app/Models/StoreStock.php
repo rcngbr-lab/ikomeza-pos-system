@@ -9,6 +9,7 @@ class StoreStock extends Model
     protected $fillable = [
         'store_id',
         'product_id',
+        'branch_id',
         'department_id',
         'quantity',
         'alert_stock',

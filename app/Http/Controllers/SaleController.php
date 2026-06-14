@@ -11,6 +11,7 @@ use App\Models\Refund;
 use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Services\DepartmentAccessService;
+use App\Services\BranchAccessService;
 use App\Services\RefundWorkflowService;
 use App\Services\StoreStockService;
 use Illuminate\Support\Facades\DB;
@@ -67,6 +68,11 @@ class SaleController extends Controller
         $departments = $departmentAccess->visibleDepartments($request->user());
 
         $query = Sale::with('user', 'items.department');
+        app(BranchAccessService::class)->apply(
+            $query,
+            $request->user(),
+            $request->integer('branch_id') ?: null
+        );
 
         if ($selectedDepartmentId) {
             $query->whereHas('items', fn ($items) => $items->where('department_id', $selectedDepartmentId));
@@ -261,6 +267,10 @@ class SaleController extends Controller
 
         $user = auth()->user();
 
+        if (!$user->hasOperationalRole('ADMIN', 'ADMINISTRATOR') && (int) $sale->branch_id !== (int) $user->branch_id) {
+            abort(403);
+        }
+
         if (
             $user->hasOperationalRole('CASHIER', 'WAITER', 'SERVER')
             &&
@@ -343,6 +353,13 @@ public function receipt($id)
     if (
         auth()->user()->hasOperationalRole('CASHIER', 'WAITER', 'SERVER')
         && $sale->user_id !== auth()->id()
+    ) {
+        abort(403);
+    }
+
+    if (
+        !auth()->user()->hasOperationalRole('ADMIN', 'ADMINISTRATOR')
+        && (int) $sale->branch_id !== (int) auth()->user()->branch_id
     ) {
         abort(403);
     }

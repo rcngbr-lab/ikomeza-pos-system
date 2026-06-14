@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\OrderTicket;
+use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 
 class OrderTicketController extends Controller
@@ -48,13 +49,15 @@ class OrderTicketController extends Controller
         }
 
         $validated = $request->validate([
-            'status' => ['required', 'in:PENDING,ACCEPTED,READY,SERVED,CANCELLED'],
+            'status' => ['required', 'in:PENDING,PREPARING,ACCEPTED,READY,SERVED,CANCELLED'],
+            'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
         $status = strtoupper($validated['status']);
+        $oldStatus = $ticket->status;
         $updates = ['status' => $status];
 
-        if ($status === 'ACCEPTED') {
+        if (in_array($status, ['ACCEPTED', 'PREPARING'], true)) {
             $updates['accepted_at'] = now();
             $updates['assigned_to'] = $request->user()->id;
         } elseif ($status === 'READY') {
@@ -63,8 +66,28 @@ class OrderTicketController extends Controller
             $updates['served_at'] = now();
         }
 
+        if ($status === 'CANCELLED' && blank($validated['notes'] ?? null)) {
+            return back()->with('error', 'Cancellation reason is required.');
+        }
+
+        if (!blank($validated['notes'] ?? null)) {
+            $updates['notes'] = trim(($ticket->notes ? $ticket->notes . "\n" : '') . $validated['notes']);
+        }
+
         $ticket->update($updates);
         $ticket->items()->update(['status' => $status]);
+
+        AuditLogService::record([
+            'action' => $status === 'CANCELLED' ? 'ORDER_TICKET_CANCELLED' : 'ORDER_TICKET_STATUS_CHANGED',
+            'module' => 'KitchenBarTickets',
+            'model' => $ticket,
+            'department_id' => $ticket->department_id,
+            'reference' => $ticket->ticket_number,
+            'description' => 'Changed ticket ' . $ticket->ticket_number . ' from ' . $oldStatus . ' to ' . $status . '.',
+            'old_values' => ['status' => $oldStatus],
+            'new_values' => ['status' => $status, 'notes' => $validated['notes'] ?? null],
+            'severity' => $status === 'CANCELLED' ? 'WARNING' : 'INFO',
+        ]);
 
         return back()->with('success', 'Ticket ' . $ticket->ticket_number . ' updated.');
     }

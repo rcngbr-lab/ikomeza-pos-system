@@ -12,11 +12,21 @@ class Payment extends Model
         'sale_id',
         'shift_id',
         'customer_id',
+        'branch_id',
         'received_by',
         'method',
         'amount',
         'change_amount',
         'reference',
+        'provider_name',
+        'payment_reference',
+        'transaction_id',
+        'payment_status',
+        'reconciliation_status',
+        'reconciled_by',
+        'reconciled_at',
+        'reconciliation_notes',
+        'idempotency_key',
         'status',
         'paid_at',
         'metadata',
@@ -26,6 +36,7 @@ class Payment extends Model
         'amount' => 'decimal:2',
         'change_amount' => 'decimal:2',
         'paid_at' => 'datetime',
+        'reconciled_at' => 'datetime',
         'metadata' => 'array',
     ];
 
@@ -33,5 +44,9 @@ class Payment extends Model
     {
         return $this->belongsTo(Sale::class);
     }
-}
 
+    public function reconciler()
+    {
+        return $this->belongsTo(User::class, 'reconciled_by');
+    }
+}

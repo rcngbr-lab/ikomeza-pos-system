@@ -9,6 +9,21 @@ class AuditLog extends Model
 {
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        static::updating(function () {
+            if (!app()->runningInConsole()) {
+                throw new \RuntimeException('Audit logs are immutable.');
+            }
+        });
+
+        static::deleting(function () {
+            if (!app()->runningInConsole()) {
+                throw new \RuntimeException('Audit logs are immutable.');
+            }
+        });
+    }
+
     /*
     |--------------------------------------------------------------------------
     | MASS ASSIGNABLE

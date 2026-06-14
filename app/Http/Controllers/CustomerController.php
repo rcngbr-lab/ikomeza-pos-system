@@ -6,13 +6,18 @@ use App\Models\Customer;
 use App\Models\CustomerLedgerEntry;
 use App\Models\Sale;
 use App\Services\AuditLogService;
+use App\Services\BranchAccessService;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
 {
     public function index(Request $request)
     {
-        $customers = Customer::query()
+        $branchAccess = app(BranchAccessService::class);
+        $query = Customer::query();
+        $branchAccess->apply($query, $request->user(), $request->integer('branch_id') ?: null);
+
+        $customers = $query
             ->when($request->filled('search'), function ($query) use ($request) {
                 $query->where('name', 'like', '%' . $request->search . '%')
                     ->orWhere('phone', 'like', '%' . $request->search . '%')
@@ -45,6 +50,7 @@ class CustomerController extends Controller
 
         $customer = Customer::create(array_merge($validated, [
             'customer_code' => 'CUS-' . now()->format('Ymd-His') . '-' . random_int(100, 999),
+            'branch_id' => $request->user()->branch_id,
             'credit_limit' => $validated['credit_limit'] ?? 0,
             'status' => Customer::STATUS_ACTIVE,
         ]));
@@ -63,6 +69,7 @@ class CustomerController extends Controller
     public function update(Request $request, Customer $customer)
     {
         abort_unless($request->user()->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER'), 403);
+        $this->authorizeCustomerBranch($request, $customer);
 
         $validated = $request->validate([
             'credit_limit' => ['required', 'numeric', 'min:0'],
@@ -88,6 +95,8 @@ class CustomerController extends Controller
 
     public function payment(Request $request, Customer $customer)
     {
+        $this->authorizeCustomerBranch($request, $customer);
+
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01'],
             'payment_method' => ['required', 'in:' . implode(',', Sale::PAYMENT_METHODS)],
@@ -130,5 +139,14 @@ class CustomerController extends Controller
         ]);
 
         return back()->with('success', 'Customer payment received and balance updated.');
+    }
+
+    private function authorizeCustomerBranch(Request $request, Customer $customer): void
+    {
+        if ($request->user()->hasOperationalRole('ADMIN', 'ADMINISTRATOR')) {
+            return;
+        }
+
+        abort_unless((int) $customer->branch_id === (int) $request->user()->branch_id, 403);
     }
 }

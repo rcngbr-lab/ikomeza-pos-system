@@ -17,6 +17,7 @@ class StoreIssue extends Model
 
     protected $fillable = [
         'issue_number',
+        'branch_id',
         'from_store_id',
         'to_store_id',
         'department_id',

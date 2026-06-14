@@ -12,6 +12,7 @@ use App\Models\Shift;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\DepartmentAccessService;
+use App\Services\BranchAccessService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -21,25 +22,33 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
         $dateRange = $this->dashboardDateRange($request);
-        $analytics = $this->analyticsFor($user, $dateRange);
+        $branchAccess = app(BranchAccessService::class);
+        $selectedBranchId = $branchAccess->selectedBranchId($user, $request->integer('branch_id') ?: null);
+        $analytics = $this->analyticsFor($user, $dateRange, $selectedBranchId);
         $selectedDepartmentId = app(DepartmentAccessService::class)->selectedDepartmentId($user);
         $dashboardContext = [
             'dateRange' => $dateRange,
             'dateLabel' => $dateRange['label'],
             'dateFilter' => $dateRange['filter'],
+            'selectedBranchId' => $selectedBranchId,
+            'branches' => $branchAccess->visibleBranches($user),
         ];
 
         if ($user->hasOperationalRole('ADMIN', 'ADMINISTRATOR')) {
             $salesForPeriod = Sale::query()->revenueBearing();
+            $branchAccess->apply($salesForPeriod, $user, $selectedBranchId);
             $this->applyDateRange($salesForPeriod, $dateRange);
 
             $refundedForPeriod = Sale::query()->refundedOnly();
+            $branchAccess->apply($refundedForPeriod, $user, $selectedBranchId);
             $this->applyDateRange($refundedForPeriod, $dateRange, 'refunded_at');
 
             $movementsForPeriod = StockMovement::with('product', 'user')->latest();
+            $branchAccess->apply($movementsForPeriod, $user, $selectedBranchId);
             $this->applyDateRange($movementsForPeriod, $dateRange);
 
             $auditForPeriod = AuditLog::with('user')->latest();
+            $branchAccess->apply($auditForPeriod, $user, $selectedBranchId);
             $this->applyDateRange($auditForPeriod, $dateRange);
 
             return view('dashboard.admin', array_merge($analytics, $dashboardContext, [
@@ -62,6 +71,7 @@ class DashboardController extends Controller
             $movementsForPeriod = StockMovement::with('product', 'department', 'user')
                 ->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))
                 ->latest();
+            $branchAccess->apply($movementsForPeriod, $user, $selectedBranchId);
 
             $this->applyDateRange($movementsForPeriod, $dateRange);
 
@@ -128,10 +138,12 @@ class DashboardController extends Controller
         abort(403);
     }
 
-    private function analyticsFor($user, array $dateRange): array
+    private function analyticsFor($user, array $dateRange, ?int $selectedBranchId = null): array
     {
         $selectedDepartmentId = app(DepartmentAccessService::class)->selectedDepartmentId($user);
+        $branchAccess = app(BranchAccessService::class);
         $salesQuery = Sale::query()->revenueBearing();
+        $branchAccess->apply($salesQuery, $user, $selectedBranchId);
 
         if ($selectedDepartmentId) {
             $salesQuery->whereHas('items', fn ($items) => $items->where('department_id', $selectedDepartmentId));
@@ -178,6 +190,7 @@ class DashboardController extends Controller
                 $sale->revenueBearing();
                 $this->applyDateRange($sale, $dateRange);
             })
+            ->whereHas('sale', fn ($sale) => app(BranchAccessService::class)->apply($sale, $user, $selectedBranchId))
             ->when($selectedDepartmentId, fn ($items) => $items->where('department_id', $selectedDepartmentId))
             ->selectRaw('product_id, SUM(quantity) as units_sold, SUM(subtotal) as revenue')
             ->groupBy('product_id')
@@ -190,6 +203,7 @@ class DashboardController extends Controller
                 ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
                 ->where('sale_items.department_id', $selectedDepartmentId)
                 ->where('sales.sale_status', Sale::STATUS_COMPLETED)
+                ->when($selectedBranchId, fn ($query) => $query->where('sales.branch_id', $selectedBranchId))
                 ->where(function ($query) {
                     $query->whereNull('sales.is_refunded')
                         ->orWhere('sales.is_refunded', false);
@@ -210,6 +224,7 @@ class DashboardController extends Controller
                 $sale->revenueBearing();
                 $this->applyDateRange($sale, $dateRange);
             })
+            ->whereHas('sale', fn ($sale) => app(BranchAccessService::class)->apply($sale, $user, $selectedBranchId))
             ->when($selectedDepartmentId, fn ($items) => $items->where('department_id', $selectedDepartmentId))
             ->sum('profit');
         $lowStockProducts = Product::with('department')

@@ -11,6 +11,8 @@ class Product extends Model
 
         'product_code',
 
+        'branch_id',
+
         'barcode',
 
         'name',
@@ -45,6 +47,8 @@ class Product extends Model
 
         'tax_category',
 
+        'is_taxable',
+
         'expiry_alert_days',
 
         'image_path',
@@ -58,6 +62,8 @@ class Product extends Model
         'track_stock' => 'boolean',
 
         'active' => 'boolean',
+
+        'is_taxable' => 'boolean',
 
         'buy_price' => 'decimal:2',
 

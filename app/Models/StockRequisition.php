@@ -19,6 +19,7 @@ class StockRequisition extends Model
 
     protected $fillable = [
         'product_id',
+        'branch_id',
         'department_id',
         'requester_id',
         'approver_id',

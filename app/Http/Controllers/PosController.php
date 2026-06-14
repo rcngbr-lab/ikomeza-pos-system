@@ -10,6 +10,7 @@ use App\Models\RestaurantTable;
 use App\Models\Sale;
 use App\Models\Shift;
 use App\Services\CategoryCatalogService;
+use App\Services\BranchAccessService;
 use App\Services\SaleService;
 use App\Services\TaxService;
 use Illuminate\Http\Request;
@@ -19,6 +20,11 @@ class PosController extends Controller
     public function index(Request $request)
     {
         app(CategoryCatalogService::class)->ensureDefaults();
+        $branchAccess = app(BranchAccessService::class);
+        $selectedBranchId = $branchAccess->selectedBranchId(
+            $request->user(),
+            $request->integer('branch_id') ?: null
+        );
 
         $shift = Shift::where('user_id', auth()->id())
             ->where(function ($query) {
@@ -36,10 +42,16 @@ class PosController extends Controller
 
         $products = Product::with('category', 'department')
             ->where('active', true)
+            ->when($selectedBranchId, fn ($query) => $query->where('branch_id', $selectedBranchId))
             ->orderBy('name')
             ->get();
 
-        $categories = Category::with('department')->orderBy('name')->get();
+        $categories = Category::with('department')
+            ->when($selectedBranchId, fn ($query) => $query->where(function ($categories) use ($selectedBranchId) {
+                $categories->where('branch_id', $selectedBranchId)->orWhereNull('branch_id');
+            }))
+            ->orderBy('name')
+            ->get();
         $departments = Department::where('active', true)
             ->orderBy('sort_order')
             ->get();
@@ -49,11 +61,13 @@ class PosController extends Controller
         $paymentMethods = Sale::PAYMENT_METHOD_LABELS;
         $customers = Customer::query()
             ->where('status', Customer::STATUS_ACTIVE)
+            ->when($selectedBranchId, fn ($query) => $query->where('branch_id', $selectedBranchId))
             ->orderBy('name')
             ->take(80)
             ->get();
         $tables = RestaurantTable::query()
             ->whereIn('status', ['AVAILABLE', 'OCCUPIED'])
+            ->when($selectedBranchId, fn ($query) => $query->where('branch_id', $selectedBranchId))
             ->orderBy('section')
             ->orderBy('name')
             ->get();
@@ -73,6 +87,14 @@ class PosController extends Controller
 
         $product = Product::with('category', 'department')->findOrFail($request->product_id);
         $quantity = (int) $request->input('quantity', 1);
+
+        if (
+            !$request->user()->hasOperationalRole('ADMIN', 'ADMINISTRATOR')
+            && $product->branch_id
+            && (int) $product->branch_id !== (int) $request->user()->branch_id
+        ) {
+            abort(403);
+        }
 
         if ($product->track_stock && $product->stock <= 0) {
             if ($request->expectsJson()) {
@@ -227,10 +249,16 @@ class PosController extends Controller
         $request->validate([
             'payment_method' => ['nullable', 'in:' . implode(',', Sale::PAYMENT_METHODS)],
             'amount_paid' => ['nullable', 'numeric', 'min:0'],
+            'provider_name' => ['nullable', 'string', 'max:80'],
+            'payment_reference' => ['nullable', 'string', 'max:160'],
+            'transaction_id' => ['nullable', 'string', 'max:160'],
             'payments' => ['nullable', 'array'],
             'payments.*.method' => ['required_with:payments', 'in:' . implode(',', Sale::PAYMENT_METHODS)],
             'payments.*.amount' => ['nullable', 'numeric', 'min:0'],
             'payments.*.reference' => ['nullable', 'string', 'max:120'],
+            'payments.*.provider_name' => ['nullable', 'string', 'max:80'],
+            'payments.*.payment_reference' => ['nullable', 'string', 'max:160'],
+            'payments.*.transaction_id' => ['nullable', 'string', 'max:160'],
             'customer_id' => ['nullable', 'exists:customers,id'],
             'customer_name' => ['nullable', 'string', 'max:120'],
             'table_id' => ['nullable', 'exists:restaurant_tables,id'],
@@ -239,9 +267,41 @@ class PosController extends Controller
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
+        foreach ((array) $request->input('payments', []) as $payment) {
+            $method = Sale::normalizePaymentMethod($payment['method'] ?? $paymentMethod);
+
+            if (!in_array($method, ['CASH', 'CREDIT'], true) && blank($payment['payment_reference'] ?? $payment['reference'] ?? $payment['transaction_id'] ?? null)) {
+                return back()
+                    ->withInput()
+                    ->with('error', 'Non-cash payments require a payment reference or transaction ID for reconciliation.');
+            }
+        }
+
+        if (
+            empty($request->input('payments', []))
+            && !in_array($paymentMethod, ['CASH', 'CREDIT'], true)
+            && blank($request->input('payment_reference') ?? $request->input('transaction_id'))
+        ) {
+            return back()
+                ->withInput()
+                ->with('error', 'Non-cash payments require a payment reference or transaction ID for reconciliation.');
+        }
+
         try {
             $total = $this->cartTotal($cart);
             $amountPaid = (float) $request->input('amount_paid', $paymentMethod === 'CASH' ? 0 : $total);
+            $payments = $request->input('payments', []);
+
+            if ($payments === [] && ($request->filled('payment_reference') || $request->filled('transaction_id') || $request->filled('provider_name'))) {
+                $payments = [[
+                    'method' => $paymentMethod,
+                    'amount' => $paymentMethod === 'CASH' ? $amountPaid : $total,
+                    'reference' => $request->input('payment_reference'),
+                    'payment_reference' => $request->input('payment_reference'),
+                    'transaction_id' => $request->input('transaction_id'),
+                    'provider_name' => $request->input('provider_name'),
+                ]];
+            }
 
             $sale = $saleService->checkout(
                 $cart,
@@ -252,7 +312,7 @@ class PosController extends Controller
                 $request->input('notes'),
                 $request->integer('customer_id') ?: null,
                 $request->integer('table_id') ?: null,
-                $request->input('payments', []),
+                $payments,
                 (float) $request->input('discount', 0),
                 $request->input('discount_reason')
             );

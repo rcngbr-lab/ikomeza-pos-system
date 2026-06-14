@@ -7,7 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 class OrderTicket extends Model
 {
     public const STATUS_PENDING = 'PENDING';
+    public const STATUS_PREPARING = 'PREPARING';
     public const STATUS_READY = 'READY';
+    public const STATUS_SERVED = 'SERVED';
+    public const STATUS_CANCELLED = 'CANCELLED';
     public const TYPE_KITCHEN = 'KOT';
     public const TYPE_BAR = 'BOT';
 
@@ -49,4 +52,3 @@ class OrderTicket extends Model
         return $this->belongsTo(Department::class);
     }
 }
-

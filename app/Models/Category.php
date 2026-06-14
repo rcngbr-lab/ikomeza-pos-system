@@ -21,6 +21,8 @@ class Category extends Model
         'name',
         'description',
 
+        'branch_id',
+
         'department_id',
 
         'sort_order',

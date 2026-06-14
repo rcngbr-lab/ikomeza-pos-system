@@ -9,6 +9,7 @@ use App\Models\StockMovement;
 use App\Models\Store;
 use App\Models\StoreStock;
 use App\Services\AuditLogService;
+use App\Services\BranchAccessService;
 use App\Services\StoreStockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,13 +18,24 @@ class StockCountController extends Controller
 {
     public function index(Request $request)
     {
+        $branchAccess = app(BranchAccessService::class);
+        $selectedBranchId = $branchAccess->selectedBranchId($request->user(), $request->integer('branch_id') ?: null);
+
         $counts = StockCount::with(['items', 'items.product'])
+            ->when($selectedBranchId, fn ($query) => $query->where('branch_id', $selectedBranchId))
             ->latest()
             ->paginate(12)
             ->withQueryString();
 
-        $stores = Store::where('active', true)->orderBy('sort_order')->get();
-        $products = Product::with('department')->where('active', true)->orderBy('name')->get();
+        $stores = Store::where('active', true)
+            ->when($selectedBranchId, fn ($query) => $query->where('branch_id', $selectedBranchId))
+            ->orderBy('sort_order')
+            ->get();
+        $products = Product::with('department')
+            ->where('active', true)
+            ->when($selectedBranchId, fn ($query) => $query->where('branch_id', $selectedBranchId))
+            ->orderBy('name')
+            ->get();
 
         return view('store.stock-counts', compact('counts', 'stores', 'products'));
     }
@@ -63,6 +75,7 @@ class StockCountController extends Controller
             StockCountItem::create([
                 'stock_count_id' => $count->id,
                 'product_id' => $product->id,
+                'branch_id' => $request->user()->branch_id,
                 'barcode' => $product->barcode,
                 'system_quantity' => $systemQuantity,
                 'counted_quantity' => $countedQuantity,

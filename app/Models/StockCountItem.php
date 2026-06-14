@@ -9,6 +9,7 @@ class StockCountItem extends Model
     protected $fillable = [
         'stock_count_id',
         'product_id',
+        'branch_id',
         'barcode',
         'system_quantity',
         'counted_quantity',
@@ -26,4 +27,3 @@ class StockCountItem extends Model
         'variance_value' => 'decimal:2',
     ];
 }
-

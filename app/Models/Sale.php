@@ -62,6 +62,8 @@ class Sale extends Model
 
         'fiscal_payload',
 
+        'tax_summary',
+
         'is_refunded',
 
         'refund_amount',
@@ -101,6 +103,8 @@ class Sale extends Model
         'refunded_at' => 'datetime',
 
         'fiscal_payload' => 'array',
+
+        'tax_summary' => 'array',
 
     ];
 

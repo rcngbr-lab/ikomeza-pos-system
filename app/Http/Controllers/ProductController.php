@@ -13,6 +13,7 @@ use App\Models\Store;
 use App\Models\StoreStock;
 use App\Models\Supplier;
 use App\Services\AuditLogService;
+use App\Services\BranchAccessService;
 use App\Services\CategoryCatalogService;
 use App\Services\DepartmentAccessService;
 use App\Services\StoreStockService;
@@ -30,6 +31,11 @@ class ProductController extends Controller
     public function index(Request $request, DepartmentAccessService $departmentAccess)
     {
         app(CategoryCatalogService::class)->ensureDefaults();
+        $branchAccess = app(BranchAccessService::class);
+        $selectedBranchId = $branchAccess->selectedBranchId(
+            $request->user(),
+            $request->integer('branch_id') ?: null
+        );
 
         $selectedDepartmentId = $departmentAccess->selectedDepartmentId(
             $request->user(),
@@ -41,6 +47,7 @@ class ProductController extends Controller
         $products = Product::with('category', 'department')
 
             ->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))
+            ->when($selectedBranchId, fn ($query) => $query->where('branch_id', $selectedBranchId))
 
             ->latest()
 
@@ -52,7 +59,7 @@ class ProductController extends Controller
 
             'products.index',
 
-            compact('products', 'departments', 'selectedDepartmentId')
+            compact('products', 'departments', 'selectedDepartmentId', 'selectedBranchId')
 
         );
     }
@@ -182,6 +189,10 @@ class ProductController extends Controller
 
                 $this->generateProductCode(),
 
+            'branch_id' =>
+
+                $request->user()->branch_id,
+
             'barcode' =>
 
                 $request->barcode,
@@ -271,6 +282,7 @@ class ProductController extends Controller
                     'product_id' => $product->id,
                 ],
                 [
+                    'branch_id' => $product->branch_id,
                     'department_id' => $product->department_id,
                     'quantity' => 0,
                     'alert_stock' => $product->alert_stock ?: 0,
@@ -305,6 +317,7 @@ class ProductController extends Controller
         if ($requestedOpeningStock > 0) {
             $requisition = StockRequisition::create([
                 'product_id' => $product->id,
+                'branch_id' => $product->branch_id,
                 'department_id' => $product->department_id,
                 'requester_id' => $request->user()->id,
                 'type' => StockRequisition::TYPE_STOCK_IN,
@@ -376,6 +389,7 @@ class ProductController extends Controller
             auth()->user(),
             $product->department_id
         );
+        $this->authorizeProductBranch(auth()->user(), $product);
 
         $departments = app(DepartmentAccessService::class)->visibleDepartments(auth()->user());
 
@@ -425,6 +439,7 @@ class ProductController extends Controller
             $request->user(),
             $product->department_id
         );
+        $this->authorizeProductBranch($request->user(), $product);
 
         $request->validate([
 
@@ -626,6 +641,7 @@ class ProductController extends Controller
                     'product_id' => $product->id,
                 ],
                 [
+                    'branch_id' => $product->branch_id,
                     'department_id' => $product->department_id,
                     'quantity' => $product->stock,
                     'alert_stock' => $product->alert_stock ?: 0,
@@ -681,6 +697,7 @@ class ProductController extends Controller
             auth()->user(),
             $product->department_id
         );
+        $this->authorizeProductBranch(auth()->user(), $product);
 
         return view(
 
@@ -706,6 +723,7 @@ class ProductController extends Controller
             $request->user(),
             $product->department_id
         );
+        $this->authorizeProductBranch($request->user(), $product);
 
         $request->validate([
 
@@ -729,6 +747,7 @@ class ProductController extends Controller
 
         $requisition = StockRequisition::create([
             'product_id' => $product->id,
+            'branch_id' => $product->branch_id,
             'department_id' => $product->department_id,
             'requester_id' => $request->user()->id,
             'type' => $request->type === 'ADD'
@@ -789,6 +808,7 @@ class ProductController extends Controller
             auth()->user(),
             $product->department_id
         );
+        $this->authorizeProductBranch(auth()->user(), $product);
 
         $oldValues = $product->only(['active', 'status']);
 
@@ -840,5 +860,14 @@ class ProductController extends Controller
                 'category_id' => 'Selected category belongs to a different department.',
             ]);
         }
+    }
+
+    private function authorizeProductBranch($user, Product $product): void
+    {
+        if ($user->hasOperationalRole('ADMIN', 'ADMINISTRATOR')) {
+            return;
+        }
+
+        abort_unless((int) $product->branch_id === (int) $user->branch_id, 403);
     }
 }

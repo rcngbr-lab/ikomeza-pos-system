@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\Stock;
 use App\Models\StockRequisition;
 use App\Services\AuditLogService;
+use App\Services\BranchAccessService;
 use App\Services\DepartmentAccessService;
 use App\Services\StoreStockService;
 use Illuminate\Http\Request;
@@ -17,6 +18,8 @@ class StockRequisitionController extends Controller
     public function index(Request $request, DepartmentAccessService $departmentAccess)
     {
         $user = $request->user();
+        $branchAccess = app(BranchAccessService::class);
+        $selectedBranchId = $branchAccess->selectedBranchId($user, $request->integer('branch_id') ?: null);
         $selectedDepartmentId = $departmentAccess->selectedDepartmentId(
             $user,
             $request->integer('department_id') ?: null
@@ -26,12 +29,15 @@ class StockRequisitionController extends Controller
         $canApprove = $this->canApproveRequisitions($user);
         $canProcess = $this->canProcessRequisitions($user);
 
-        $requisitions = StockRequisition::with([
+        $requisitionQuery = StockRequisition::with([
             'product.department',
             'department',
             'requester',
             'approver',
-        ])
+        ]);
+        $branchAccess->apply($requisitionQuery, $user, $selectedBranchId);
+
+        $requisitions = $requisitionQuery
             ->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))
             ->when(
                 $user->hasOperationalRole('CASHIER', 'WAITER', 'SERVER') && !$canApprove,
@@ -44,12 +50,15 @@ class StockRequisitionController extends Controller
             ->withQueryString();
 
         $products = Product::with('department')
+            ->when($selectedBranchId, fn ($query) => $query->where('branch_id', $selectedBranchId))
             ->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))
             ->where('active', true)
             ->orderBy('name')
             ->get();
 
-        $summaryQuery = StockRequisition::query()
+        $summaryQuery = StockRequisition::query();
+        $branchAccess->apply($summaryQuery, $user, $selectedBranchId);
+        $summaryQuery
             ->when($selectedDepartmentId, fn ($query) => $query->where('department_id', $selectedDepartmentId))
             ->when(
                 $user->hasOperationalRole('CASHIER', 'WAITER', 'SERVER') && !$canApprove,
@@ -89,6 +98,14 @@ class StockRequisitionController extends Controller
 
         $product = Product::findOrFail($validated['product_id']);
 
+        if (
+            !$request->user()->hasOperationalRole('ADMIN', 'ADMINISTRATOR')
+            && $product->branch_id
+            && (int) $product->branch_id !== (int) $request->user()->branch_id
+        ) {
+            abort(403);
+        }
+
         $departmentAccess->authorize(
             $request->user(),
             $product->department_id
@@ -96,6 +113,7 @@ class StockRequisitionController extends Controller
 
         $requisition = StockRequisition::create([
             'product_id' => $product->id,
+            'branch_id' => $request->user()->branch_id,
             'department_id' => $product->department_id,
             'requester_id' => $request->user()->id,
             'type' => $validated['type'],
@@ -364,6 +382,7 @@ class StockRequisitionController extends Controller
             $request->user(),
             $requisition->department_id
         );
+        $this->authorizeRequisitionBranch($request, $requisition);
 
         if (
             !$request->user()->hasOperationalRole('ADMIN', 'ADMINISTRATOR')
@@ -393,6 +412,7 @@ class StockRequisitionController extends Controller
             $request->user(),
             $requisition->department_id
         );
+        $this->authorizeRequisitionBranch($request, $requisition);
 
         if (
             !$request->user()->hasOperationalRole('ADMIN', 'ADMINISTRATOR')
@@ -410,5 +430,14 @@ class StockRequisitionController extends Controller
             'MANAGER',
             'STORE_KEEPER'
         );
+    }
+
+    private function authorizeRequisitionBranch(Request $request, StockRequisition $requisition): void
+    {
+        if ($request->user()->hasOperationalRole('ADMIN', 'ADMINISTRATOR')) {
+            return;
+        }
+
+        abort_unless((int) $requisition->branch_id === (int) $request->user()->branch_id, 403);
     }
 }

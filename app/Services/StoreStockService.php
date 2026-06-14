@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Product;
+use App\Models\ProductBatch;
 use App\Models\StockMovement;
 use App\Models\Store;
 use App\Models\StoreStock;
@@ -39,6 +40,7 @@ class StoreStockService
             ],
             [
                 'department_id' => $product->department_id ?: $store->department_id,
+                'branch_id' => $product->branch_id ?: $store->branch_id,
                 'quantity' => 0,
                 'alert_stock' => $product->alert_stock ?: 0,
                 'unit_cost' => $product->buy_price ?: 0,
@@ -152,6 +154,8 @@ class StoreStockService
         $after = $before - $quantity;
         $cost = $unitCost ?? (float) ($balance->unit_cost ?: $product->buy_price ?: 0);
 
+        $this->consumeBatchesFefo($product, $store, $quantity);
+
         $balance->update([
             'quantity' => $after,
             'unit_cost' => $cost,
@@ -173,6 +177,7 @@ class StoreStockService
         $cost = $unitCost ?? (float) ($balance->unit_cost ?: $product->buy_price ?: 0);
 
         $balance->update([
+            'branch_id' => $product->branch_id ?: $store->branch_id ?: $balance->branch_id,
             'department_id' => $product->department_id ?: $store->department_id,
             'quantity' => $after,
             'alert_stock' => $product->alert_stock ?: $balance->alert_stock,
@@ -273,5 +278,56 @@ class StoreStockService
                 ->filter(fn ($value, $column) => Schema::hasColumn('stock_movements', $column))
                 ->all()
         );
+    }
+
+    private function consumeBatchesFefo(Product $product, Store $store, float $quantity): void
+    {
+        if (!Schema::hasTable('product_batches')) {
+            return;
+        }
+
+        $batches = ProductBatch::where('product_id', $product->id)
+            ->where('store_id', $store->id)
+            ->where('quantity_remaining', '>', 0)
+            ->lockForUpdate()
+            ->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('expiry_date')
+            ->orderBy('received_date')
+            ->get();
+
+        if ($batches->isEmpty()) {
+            return;
+        }
+
+        $available = (float) $batches
+            ->filter(fn ($batch) => !$batch->expiry_date || $batch->expiry_date->endOfDay()->isFuture())
+            ->sum('quantity_remaining');
+
+        if ($available < $quantity) {
+            throw new \RuntimeException($product->name . ' does not have enough non-expired batch stock in ' . $store->name . '.');
+        }
+
+        $remaining = $quantity;
+
+        foreach ($batches as $batch) {
+            if ($remaining <= 0) {
+                break;
+            }
+
+            if ($batch->expiry_date && $batch->expiry_date->endOfDay()->isPast()) {
+                $batch->forceFill(['status' => ProductBatch::STATUS_EXPIRED])->save();
+                continue;
+            }
+
+            $take = min($remaining, (float) $batch->quantity_remaining);
+            $batch->decrement('quantity_remaining', $take);
+            $batch->refresh();
+
+            if ((float) $batch->quantity_remaining <= 0) {
+                $batch->forceFill(['status' => ProductBatch::STATUS_DEPLETED])->save();
+            }
+
+            $remaining -= $take;
+        }
     }
 }

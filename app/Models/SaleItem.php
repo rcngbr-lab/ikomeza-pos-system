@@ -34,6 +34,10 @@ class SaleItem extends Model
 
         'taxable_amount',
 
+        'is_taxable',
+
+        'tax_category',
+
         'vat_rate',
 
         'vat_amount',

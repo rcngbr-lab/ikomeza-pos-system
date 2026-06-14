@@ -9,6 +9,7 @@ class PurchaseItem extends Model
     protected $fillable = [
         'purchase_id',
         'product_id',
+        'branch_id',
         'quantity_ordered',
         'quantity_received',
         'damaged_quantity',

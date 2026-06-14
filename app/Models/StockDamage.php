@@ -13,6 +13,7 @@ class StockDamage extends Model
     protected $fillable = [
         'damage_number',
         'product_id',
+        'branch_id',
         'store_id',
         'department_id',
         'quantity',

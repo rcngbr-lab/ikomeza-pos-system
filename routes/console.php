@@ -1,80 +1,112 @@
 <?php
 
+use App\Services\BackupService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
-use App\Models\BackupRun;
+use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Artisan::command('pos:backup {--name=}', function () {
-    if (config('database.default') !== 'sqlite') {
-        $this->warn('Automated file backup currently supports SQLite. Use managed database snapshots for MySQL/PostgreSQL.');
+Artisan::command('pos:production-preflight', function () {
+    if (!app()->environment('production')) {
+        $this->info('Production preflight skipped outside production.');
+
+        return 0;
+    }
+
+    $connection = config('database.default');
+
+    if ($connection === 'sqlite' && !filter_var(env('ALLOW_SQLITE_PRODUCTION', false), FILTER_VALIDATE_BOOL)) {
+        $this->error('Production is using SQLite. Configure PostgreSQL/MySQL or set ALLOW_SQLITE_PRODUCTION=true only for an explicit temporary exception.');
 
         return 1;
     }
 
-    $database = database_path('database.sqlite');
-
-    if (!is_file($database)) {
-        $this->error('SQLite database file was not found at ' . $database);
+    if (blank(config('app.key'))) {
+        $this->error('APP_KEY is missing.');
 
         return 1;
     }
 
-    $backupDir = storage_path('app/backups');
+    if (filter_var(env('ENABLE_DEMO_ACCOUNTS', false), FILTER_VALIDATE_BOOL)) {
+        $this->error('ENABLE_DEMO_ACCOUNTS must be false in production.');
 
-    if (!is_dir($backupDir)) {
-        mkdir($backupDir, 0775, true);
+        return 1;
     }
 
-    $name = $this->option('name') ?: 'backup-' . now()->format('Ymd-His') . '.sqlite';
-    $path = $backupDir . DIRECTORY_SEPARATOR . $name;
+    if (filter_var(env('RUN_DEMO_SEEDERS', false), FILTER_VALIDATE_BOOL)) {
+        $this->error('RUN_DEMO_SEEDERS must be false in production.');
 
-    copy($database, $path);
-
-    if (Schema::hasTable('backup_runs')) {
-        BackupRun::create([
-            'backup_name' => $name,
-            'path' => $path,
-            'size_bytes' => filesize($path) ?: 0,
-            'status' => 'COMPLETED',
-            'notes' => 'Created by pos:backup',
-        ]);
+        return 1;
     }
 
-    $this->info('Backup created: ' . $path);
+    $this->info('Production preflight passed.');
 
     return 0;
-})->purpose('Create a safe SQLite database backup for POS disaster recovery');
+})->purpose('Block unsafe production startup settings before serving IKOMEZA POS');
 
-Artisan::command('pos:restore {path} {--force}', function (string $path) {
-    if (config('database.default') !== 'sqlite') {
-        $this->warn('Restore command currently supports SQLite only.');
+Artisan::command('pos:backup {--name=} {--created-by=}', function (BackupService $backupService) {
+    $run = $backupService->create(
+        name: $this->option('name'),
+        createdBy: $this->option('created-by') ? (int) $this->option('created-by') : null
+    );
+
+    if ($run->status !== 'COMPLETED') {
+        $this->error('Backup failed: ' . $run->notes);
 
         return 1;
     }
 
+    $this->info('Backup created: ' . $run->path);
+
+    return 0;
+})->purpose('Create a verified POS database and storage backup');
+
+Artisan::command('pos:backup-verify {path}', function (string $path, BackupService $backupService) {
+    $result = $backupService->verify($path);
+
+    if (!$result['ok']) {
+        $this->error($result['message']);
+
+        return 1;
+    }
+
+    $this->info($result['message']);
+
+    return 0;
+})->purpose('Verify a POS backup manifest and file hashes');
+
+Artisan::command('pos:restore {path} {--force}', function (string $path, BackupService $backupService) {
     if (!$this->option('force')) {
         $this->error('Restore is destructive. Re-run with --force after taking a fresh backup.');
 
         return 1;
     }
 
-    if (!is_file($path)) {
-        $this->error('Backup file not found: ' . $path);
+    if (app()->environment('production') && !filter_var(env('ALLOW_PRODUCTION_RESTORE', false), FILTER_VALIDATE_BOOL)) {
+        $this->error('Production restore is blocked. Set ALLOW_PRODUCTION_RESTORE=true only during a planned recovery window.');
 
         return 1;
     }
 
-    $database = database_path('database.sqlite');
-    DB::disconnect();
-    copy($path, $database);
+    $result = $backupService->restore($path);
 
-    $this->info('Database restored from: ' . $path);
+    if (!$result['ok']) {
+        $this->error($result['message']);
+
+        return 1;
+    }
+
+    $this->info($result['message']);
 
     return 0;
-})->purpose('Restore a SQLite POS database backup when explicitly forced');
+})->purpose('Restore a verified POS logical database backup with explicit force protection');
+
+Schedule::command('pos:backup')
+    ->dailyAt(env('BACKUP_DAILY_AT', '02:00'))
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        logger()->error('Scheduled IKOMEZA POS backup failed.');
+    });

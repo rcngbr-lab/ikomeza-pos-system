@@ -29,6 +29,9 @@ use App\Http\Controllers\OrderTicketController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\PaymentReconciliationController;
+use App\Http\Controllers\BackupController;
+use App\Http\Controllers\ErrorEventController;
 
 /*
 |--------------------------------------------------------------------------
@@ -409,6 +412,12 @@ Route::middleware([
     ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,STORE_KEEPER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF');
 
     Route::get(
+        '/reports/tax',
+        [ReportController::class, 'tax']
+    )->name('reports.tax')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER');
+
+    Route::get(
         '/my-report',
         [ReportController::class, 'myReport']
     )->name('reports.my')
@@ -538,6 +547,42 @@ Route::middleware([
         '/settings',
         [SettingsController::class, 'update']
     )->name('settings.update')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR');
+
+    Route::get(
+        '/payments/reconciliation',
+        [PaymentReconciliationController::class, 'index']
+    )->name('payments.reconciliation')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER');
+
+    Route::post(
+        '/payments/{payment}/match',
+        [PaymentReconciliationController::class, 'match']
+    )->name('payments.match')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER');
+
+    Route::post(
+        '/payments/{payment}/exception',
+        [PaymentReconciliationController::class, 'exception']
+    )->name('payments.exception')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER');
+
+    Route::get(
+        '/backups',
+        [BackupController::class, 'index']
+    )->name('backups.index')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR');
+
+    Route::post(
+        '/backups',
+        [BackupController::class, 'store']
+    )->name('backups.store')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR');
+
+    Route::get(
+        '/system/errors',
+        [ErrorEventController::class, 'index']
+    )->name('system.errors')
     ->middleware('operational.role:ADMIN,ADMINISTRATOR');
 
 });

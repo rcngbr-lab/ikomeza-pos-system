@@ -14,6 +14,7 @@ class StockReturn extends Model
         'return_number',
         'return_type',
         'product_id',
+        'branch_id',
         'from_store_id',
         'to_store_id',
         'supplier_id',

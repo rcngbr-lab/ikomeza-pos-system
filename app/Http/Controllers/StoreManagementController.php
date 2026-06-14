@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Department;
 use App\Models\Product;
+use App\Models\ProductBatch;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\Stock;
@@ -18,6 +19,7 @@ use App\Models\StoreStock;
 use App\Models\Supplier;
 use App\Services\AuditLogService;
 use App\Services\AccountingService;
+use App\Services\BranchAccessService;
 use App\Services\DepartmentAccessService;
 use App\Services\StoreStockService;
 use Illuminate\Http\Request;
@@ -33,6 +35,7 @@ class StoreManagementController extends Controller
         $context = $this->storeContext($request, $departmentAccess);
 
         $stockBase = StoreStock::with(['store', 'product.category', 'department'])
+            ->when($context['selectedBranchId'], fn ($query) => $query->where('branch_id', $context['selectedBranchId']))
             ->when($context['selectedDepartmentId'], fn ($query) => $query->where('department_id', $context['selectedDepartmentId']))
             ->when($context['selectedStoreId'], fn ($query) => $query->where('store_id', $context['selectedStoreId']))
             ->when($request->filled('search'), function ($query) use ($request) {
@@ -50,6 +53,7 @@ class StoreManagementController extends Controller
 
         $storeValues = StoreStock::query()
             ->selectRaw('store_id, SUM(total_value) as value, SUM(quantity) as units')
+            ->when($context['selectedBranchId'], fn ($query) => $query->where('branch_id', $context['selectedBranchId']))
             ->when($context['selectedDepartmentId'], fn ($query) => $query->where('department_id', $context['selectedDepartmentId']))
             ->groupBy('store_id')
             ->pluck('value', 'store_id');
@@ -63,10 +67,12 @@ class StoreManagementController extends Controller
         $this->applyDateFilter($issuedQuery, $request);
 
         $damagedQuery = StockDamage::query()
+            ->when($context['selectedBranchId'], fn ($query) => $query->where('branch_id', $context['selectedBranchId']))
             ->when($context['selectedDepartmentId'], fn ($query) => $query->where('department_id', $context['selectedDepartmentId']));
         $this->applyDateFilter($damagedQuery, $request);
 
         $returnedQuery = StockReturn::query()
+            ->when($context['selectedBranchId'], fn ($query) => $query->where('branch_id', $context['selectedBranchId']))
             ->when($context['selectedDepartmentId'], fn ($query) => $query->where('department_id', $context['selectedDepartmentId']));
         $this->applyDateFilter($returnedQuery, $request);
 
@@ -121,6 +127,7 @@ class StoreManagementController extends Controller
         $context = $this->storeContext($request, $departmentAccess);
 
         $suppliers = Supplier::with('department')
+            ->when($context['selectedBranchId'], fn ($query) => $query->where('branch_id', $context['selectedBranchId']))
             ->when($context['selectedDepartmentId'], fn ($query) => $query->where('department_id', $context['selectedDepartmentId']))
             ->when($request->filled('search'), function ($query) use ($request) {
                 $query->where('company_name', 'like', '%' . $request->search . '%')
@@ -156,6 +163,7 @@ class StoreManagementController extends Controller
         }
 
         $supplier = Supplier::create(array_merge($validated, [
+            'branch_id' => $request->user()->branch_id,
             'status' => Supplier::STATUS_ACTIVE,
         ]));
 
@@ -196,11 +204,13 @@ class StoreManagementController extends Controller
             ->withQueryString();
 
         $products = Product::with('department')
+            ->when($context['selectedBranchId'], fn ($query) => $query->where('branch_id', $context['selectedBranchId']))
             ->when($context['selectedDepartmentId'], fn ($query) => $query->where('department_id', $context['selectedDepartmentId']))
             ->orderBy('name')
             ->get();
 
         $suppliers = Supplier::query()
+            ->when($context['selectedBranchId'], fn ($query) => $query->where('branch_id', $context['selectedBranchId']))
             ->when($context['selectedDepartmentId'], fn ($query) => $query->where(function ($supplier) use ($context) {
                 $supplier->whereNull('department_id')->orWhere('department_id', $context['selectedDepartmentId']);
             }))
@@ -209,6 +219,7 @@ class StoreManagementController extends Controller
             ->get();
 
         $approvedRequisitions = StockRequisition::with('product')
+            ->when($context['selectedBranchId'], fn ($query) => $query->where('branch_id', $context['selectedBranchId']))
             ->when($context['selectedDepartmentId'], fn ($query) => $query->where('department_id', $context['selectedDepartmentId']))
             ->where('status', StockRequisition::STATUS_APPROVED)
             ->latest()
@@ -285,6 +296,7 @@ class StoreManagementController extends Controller
         $purchase = DB::transaction(function () use ($request, $validated, $product, $store, $requisition, $subtotal, $tax, $discount, $total, $paidAmount, $balanceDue) {
             $purchase = Purchase::create([
                 'purchase_number' => $this->nextNumber('PO'),
+                'branch_id' => $request->user()->branch_id,
                 'supplier_id' => $validated['supplier_id'],
                 'requisition_id' => $validated['requisition_id'] ?? null,
                 'department_id' => $validated['department_id'] ?: $product->department_id,
@@ -325,6 +337,7 @@ class StoreManagementController extends Controller
             PurchaseItem::create([
                 'purchase_id' => $purchase->id,
                 'product_id' => $product->id,
+                'branch_id' => $request->user()->branch_id,
                 'quantity_ordered' => $validated['quantity_ordered'],
                 'quantity_received' => 0,
                 'quantity_difference' => $validated['quantity_ordered'],
@@ -466,6 +479,45 @@ class StoreManagementController extends Controller
                         'user_id' => $request->user()->id,
                     ]);
 
+                    $batchNumber = $request->input('batch_number.' . $item->id)
+                        ?: $item->batch_number
+                        ?: 'NO-BATCH-' . $purchase->purchase_number . '-' . $item->id;
+
+                    $batch = ProductBatch::where('product_id', $item->product_id)
+                        ->where('store_id', $purchase->store_id)
+                        ->where('batch_number', $batchNumber)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($batch) {
+                        $batch->increment('quantity_received', $received);
+                        $batch->increment('quantity_remaining', $received);
+                        $batch->forceFill([
+                            'supplier_id' => $purchase->supplier_id,
+                            'purchase_item_id' => $item->id,
+                            'branch_id' => $purchase->branch_id ?: $request->user()->branch_id,
+                            'unit_cost' => $item->unit_cost,
+                            'received_date' => today(),
+                            'expiry_date' => $request->input('expiry_date.' . $item->id) ?: $item->expiry_date,
+                            'status' => ProductBatch::STATUS_ACTIVE,
+                        ])->save();
+                    } else {
+                        ProductBatch::create([
+                            'product_id' => $item->product_id,
+                            'store_id' => $purchase->store_id,
+                            'supplier_id' => $purchase->supplier_id,
+                            'purchase_item_id' => $item->id,
+                            'branch_id' => $purchase->branch_id ?: $request->user()->branch_id,
+                            'batch_number' => $batchNumber,
+                            'quantity_received' => $received,
+                            'quantity_remaining' => $received,
+                            'unit_cost' => $item->unit_cost,
+                            'received_date' => today(),
+                            'expiry_date' => $request->input('expiry_date.' . $item->id) ?: $item->expiry_date,
+                            'status' => ProductBatch::STATUS_ACTIVE,
+                        ]);
+                    }
+
                     $receivedUnits += $received;
                 }
 
@@ -473,6 +525,7 @@ class StoreManagementController extends Controller
                     $damage = StockDamage::create([
                         'damage_number' => $this->nextNumber('DMG'),
                         'product_id' => $item->product_id,
+                        'branch_id' => $purchase->branch_id ?: $request->user()->branch_id,
                         'store_id' => $purchase->store_id,
                         'department_id' => $item->product->department_id,
                         'quantity' => $damaged,
@@ -545,6 +598,7 @@ class StoreManagementController extends Controller
         $context = $this->storeContext($request, $departmentAccess);
 
         $issues = StoreIssue::with(['fromStore', 'toStore', 'department', 'items.product', 'issuer', 'receiver'])
+            ->when($context['selectedBranchId'], fn ($query) => $query->where('branch_id', $context['selectedBranchId']))
             ->when($context['selectedDepartmentId'], fn ($query) => $query->where('department_id', $context['selectedDepartmentId']))
             ->latest()
             ->paginate(10)
@@ -579,6 +633,7 @@ class StoreManagementController extends Controller
 
         $issue = StoreIssue::create([
             'issue_number' => $this->nextNumber('ISS'),
+            'branch_id' => $request->user()->branch_id,
             'from_store_id' => $fromStore->id,
             'to_store_id' => $toStore->id,
             'department_id' => $toStore->department_id ?: $product->department_id,
@@ -590,6 +645,7 @@ class StoreManagementController extends Controller
         StoreIssueItem::create([
             'store_issue_id' => $issue->id,
             'product_id' => $product->id,
+            'branch_id' => $request->user()->branch_id,
             'quantity_requested' => $validated['quantity'],
             'quantity_issued' => 0,
             'quantity_received' => 0,
@@ -740,6 +796,7 @@ class StoreManagementController extends Controller
         $damage = StockDamage::create([
             'damage_number' => $this->nextNumber('DMG'),
             'product_id' => $product->id,
+            'branch_id' => $request->user()->branch_id,
             'store_id' => $store->id,
             'department_id' => $product->department_id ?: $store->department_id,
             'quantity' => $validated['quantity'],
@@ -880,6 +937,7 @@ class StoreManagementController extends Controller
             'return_number' => $this->nextNumber('RTN'),
             'return_type' => strtoupper($validated['return_type']),
             'product_id' => $product->id,
+            'branch_id' => $request->user()->branch_id,
             'from_store_id' => $validated['from_store_id'] ?? null,
             'to_store_id' => $validated['to_store_id'] ?? null,
             'supplier_id' => $validated['supplier_id'] ?? null,
@@ -1029,26 +1087,36 @@ class StoreManagementController extends Controller
 
     private function storeContext(Request $request, DepartmentAccessService $departmentAccess): array
     {
+        $branchAccess = app(BranchAccessService::class);
+        $selectedBranchId = $branchAccess->selectedBranchId(
+            $request->user(),
+            $request->integer('branch_id') ?: null
+        );
         $selectedDepartmentId = $departmentAccess->selectedDepartmentId(
             $request->user(),
             $request->integer('department_id') ?: null
         );
 
         $departments = $departmentAccess->visibleDepartments($request->user());
-        $stores = $this->visibleStores($request, $selectedDepartmentId);
+        $branches = $branchAccess->visibleBranches($request->user());
+        $stores = $this->visibleStores($request, $selectedDepartmentId, $selectedBranchId);
         $selectedStoreId = $request->integer('store_id') ?: null;
 
         if ($selectedStoreId && !$stores->pluck('id')->contains($selectedStoreId)) {
             abort(403);
         }
 
-        return compact('departments', 'stores', 'selectedDepartmentId', 'selectedStoreId');
+        return compact('branches', 'departments', 'stores', 'selectedBranchId', 'selectedDepartmentId', 'selectedStoreId');
     }
 
-    private function visibleStores(Request $request, ?int $selectedDepartmentId = null)
+    private function visibleStores(Request $request, ?int $selectedDepartmentId = null, ?int $selectedBranchId = null)
     {
         $query = Store::with('department')->where('active', true);
         $user = $request->user();
+
+        if ($selectedBranchId) {
+            $query->where('branch_id', $selectedBranchId);
+        }
 
         if ($selectedDepartmentId) {
             $query->where(function ($stores) use ($selectedDepartmentId) {
@@ -1069,6 +1137,7 @@ class StoreManagementController extends Controller
     private function filteredPurchases(array $context)
     {
         return Purchase::query()
+            ->when($context['selectedBranchId'] ?? null, fn ($query) => $query->where('branch_id', $context['selectedBranchId']))
             ->when($context['selectedDepartmentId'] ?? null, fn ($query) => $query->where('department_id', $context['selectedDepartmentId']))
             ->when($context['selectedStoreId'] ?? null, fn ($query) => $query->where('store_id', $context['selectedStoreId']));
     }
@@ -1076,12 +1145,14 @@ class StoreManagementController extends Controller
     private function filteredRequisitions(array $context)
     {
         return StockRequisition::query()
+            ->when($context['selectedBranchId'] ?? null, fn ($query) => $query->where('branch_id', $context['selectedBranchId']))
             ->when($context['selectedDepartmentId'] ?? null, fn ($query) => $query->where('department_id', $context['selectedDepartmentId']));
     }
 
     private function filteredMovements(array $context)
     {
         return StockMovement::query()
+            ->when($context['selectedBranchId'] ?? null, fn ($query) => $query->where('branch_id', $context['selectedBranchId']))
             ->when($context['selectedDepartmentId'] ?? null, fn ($query) => $query->where('department_id', $context['selectedDepartmentId']))
             ->when($context['selectedStoreId'] ?? null, function ($query) use ($context) {
                 $query->where(function ($movement) use ($context) {

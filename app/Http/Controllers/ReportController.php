@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Services\CategoryCatalogService;
+use App\Services\BranchAccessService;
 use App\Services\DepartmentAccessService;
+use App\Services\TaxReportService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -16,11 +18,17 @@ class ReportController extends Controller
         app(CategoryCatalogService::class)->ensureDefaults();
 
         $departmentAccess = app(DepartmentAccessService::class);
+        $branchAccess = app(BranchAccessService::class);
 
         $selectedDepartmentId = $departmentAccess->selectedDepartmentId(
             $request->user(),
             $request->integer('department_id') ?: null
         );
+        $selectedBranchId = $branchAccess->selectedBranchId(
+            $request->user(),
+            $request->integer('branch_id') ?: null
+        );
+        $branches = $branchAccess->visibleBranches($request->user());
 
         $departments = $departmentAccess->visibleDepartments($request->user());
 
@@ -32,6 +40,7 @@ class ReportController extends Controller
 
         $query = Sale::with('user', 'items.department')
             ->latest();
+        $branchAccess->apply($query, $request->user(), $selectedBranchId);
 
         if ($selectedDepartmentId) {
             $query->whereHas('items', fn ($items) => $items->where('department_id', $selectedDepartmentId));
@@ -302,6 +311,8 @@ class ReportController extends Controller
                 'topProducts',
                 'departments',
                 'selectedDepartmentId',
+                'selectedBranchId',
+                'branches',
                 'departmentBreakdown',
                 'printSales',
                 'reportPeriod',
@@ -333,6 +344,35 @@ class ReportController extends Controller
         return redirect()->route('sales.index', [
             'filter' => $request->filter ?? 'daily',
         ]);
+    }
+
+    public function tax(Request $request, BranchAccessService $branchAccess, TaxReportService $taxReport)
+    {
+        $selectedBranchId = $branchAccess->selectedBranchId(
+            $request->user(),
+            $request->integer('branch_id') ?: null
+        );
+
+        $filter = $request->input('filter', 'today');
+        $start = null;
+        $end = null;
+
+        if ($request->filled('start_date') || $request->filled('end_date')) {
+            $start = $request->filled('start_date') ? Carbon::parse($request->start_date)->startOfDay() : null;
+            $end = $request->filled('end_date') ? Carbon::parse($request->end_date)->endOfDay() : null;
+        } else {
+            [$start, $end] = match ($filter) {
+                'month' => [now()->startOfMonth(), now()->endOfMonth()],
+                'last_month' => [now()->subMonthNoOverflow()->startOfMonth(), now()->subMonthNoOverflow()->endOfMonth()],
+                'year' => [now()->startOfYear(), now()->endOfYear()],
+                default => [today()->startOfDay(), today()->endOfDay()],
+            };
+        }
+
+        $report = $taxReport->report($start, $end, $selectedBranchId);
+        $branches = $branchAccess->visibleBranches($request->user());
+
+        return view('reports.tax', compact('report', 'branches', 'selectedBranchId', 'filter', 'start', 'end'));
     }
 
     private function periodLabel(string $filter, Request $request): string

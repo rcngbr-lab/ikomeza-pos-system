@@ -17,7 +17,7 @@
             </select>
             <select name="status" class="h-10 rounded-xl border-slate-200 bg-white text-sm">
                 <option value="">All status</option>
-                @foreach(['PENDING', 'ACCEPTED', 'READY', 'SERVED', 'CANCELLED'] as $status)
+                @foreach(['PENDING', 'PREPARING', 'READY', 'SERVED', 'CANCELLED'] as $status)
                     <option value="{{ $status }}" @selected(request('status') === $status)>{{ str($status)->headline() }}</option>
                 @endforeach
             </select>
@@ -57,10 +57,11 @@
                 <form method="POST" action="{{ route('tickets.status', $ticket) }}" class="mt-4 grid grid-cols-2 gap-2">
                     @csrf
                     <select name="status" class="h-10 rounded-xl border-slate-200 bg-slate-50 text-xs font-bold">
-                        @foreach(['ACCEPTED', 'READY', 'SERVED', 'CANCELLED'] as $status)
+                        @foreach(['PREPARING', 'READY', 'SERVED', 'CANCELLED'] as $status)
                             <option value="{{ $status }}">{{ str($status)->headline() }}</option>
                         @endforeach
                     </select>
+                    <input name="notes" class="h-10 rounded-xl border-slate-200 bg-slate-50 px-3 text-xs" placeholder="Reason if cancelled">
                     <button class="h-10 rounded-xl bg-slate-950 text-xs font-black text-white">Update</button>
                 </form>
             </article>
@@ -75,4 +76,3 @@
 </div>
 
 @endsection
-
