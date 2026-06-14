@@ -75,6 +75,12 @@ class PosController extends Controller
         $quantity = (int) $request->input('quantity', 1);
 
         if ($product->track_stock && $product->stock <= 0) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $product->name . ' is out of stock.',
+                ], 422);
+            }
+
             return back()->with('error', $product->name . ' is out of stock.');
         }
 
@@ -83,6 +89,12 @@ class PosController extends Controller
         $newQuantity = $currentQuantity + $quantity;
 
         if ($product->track_stock && $newQuantity > $product->stock) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Stock limit reached for ' . $product->name . '.',
+                ], 422);
+            }
+
             return back()->with('error', 'Stock limit reached for ' . $product->name . '.');
         }
 
@@ -97,9 +109,15 @@ class PosController extends Controller
             'department_code' => $product->department->code ?? null,
             'price' => (float) $product->selling_price,
             'quantity' => $newQuantity,
+            'unit' => $product->unit ?? 'item',
+            'stock' => (float) $product->stock,
         ];
 
         session()->put('cart', $cart);
+
+        if ($request->expectsJson()) {
+            return response()->json($this->cartPayload($cart, $product->name . ' added to cart.'));
+        }
 
         return back()->with('success', $product->name . ' added to cart.');
     }
@@ -129,10 +147,20 @@ class PosController extends Controller
             unset($cart[$product->id]);
             session()->put('cart', $cart);
 
+            if ($request->expectsJson()) {
+                return response()->json($this->cartPayload($cart, 'Item removed from cart.'));
+            }
+
             return back()->with('success', 'Item removed from cart.');
         }
 
         if ($product->track_stock && $quantity > $product->stock) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Stock limit reached for ' . $product->name . '.',
+                ], 422);
+            }
+
             return back()->with('error', 'Stock limit reached for ' . $product->name . '.');
         }
 
@@ -141,6 +169,10 @@ class PosController extends Controller
         }
 
         session()->put('cart', $cart);
+
+        if ($request->expectsJson()) {
+            return response()->json($this->cartPayload($cart, 'Cart updated.'));
+        }
 
         return back()->with('success', 'Cart updated.');
     }
@@ -151,18 +183,32 @@ class PosController extends Controller
         $productId = $productId ?? $request->input('product_id');
 
         if (!$productId) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Select an item to remove.',
+                ], 422);
+            }
+
             return back()->with('error', 'Select an item to remove.');
         }
 
         unset($cart[$productId]);
         session()->put('cart', $cart);
 
+        if ($request->expectsJson()) {
+            return response()->json($this->cartPayload($cart, 'Item removed from cart.'));
+        }
+
         return back()->with('success', 'Item removed from cart.');
     }
 
-    public function clearCart()
+    public function clearCart(Request $request)
     {
         session()->forget('cart');
+
+        if ($request->expectsJson()) {
+            return response()->json($this->cartPayload([], 'Cart cleared.'));
+        }
 
         return back()->with('success', 'Cart cleared.');
     }
@@ -247,6 +293,12 @@ class PosController extends Controller
         $productId = $request->product_id;
 
         if (!isset($cart[$productId])) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Item is no longer in the cart.',
+                ], 422);
+            }
+
             return back()->with('error', 'Item is no longer in the cart.');
         }
 
@@ -257,15 +309,29 @@ class PosController extends Controller
             unset($cart[$productId]);
             session()->put('cart', $cart);
 
+            if ($request->expectsJson()) {
+                return response()->json($this->cartPayload($cart, 'Item removed from cart.'));
+            }
+
             return back()->with('success', 'Item removed from cart.');
         }
 
         if ($product->track_stock && $nextQuantity > $product->stock) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Stock limit reached for ' . $product->name . '.',
+                ], 422);
+            }
+
             return back()->with('error', 'Stock limit reached for ' . $product->name . '.');
         }
 
         $cart[$productId]['quantity'] = $nextQuantity;
         session()->put('cart', $cart);
+
+        if ($request->expectsJson()) {
+            return response()->json($this->cartPayload($cart, 'Cart updated.'));
+        }
 
         return back();
     }
@@ -275,5 +341,30 @@ class PosController extends Controller
         return collect($cart)->sum(
             fn ($item) => (float) $item['price'] * (float) $item['quantity']
         );
+    }
+
+    private function cartPayload(array $cart, string $message): array
+    {
+        $items = collect($cart)
+            ->values()
+            ->map(function ($item) {
+                $quantity = (int) ($item['quantity'] ?? 0);
+                $price = (float) ($item['price'] ?? 0);
+
+                return array_merge($item, [
+                    'quantity' => $quantity,
+                    'price' => $price,
+                    'line_total' => $price * $quantity,
+                    'unit' => $item['unit'] ?? 'item',
+                ]);
+            })
+            ->all();
+
+        return [
+            'message' => $message,
+            'cart_items' => $items,
+            'cart_count' => collect($items)->sum('quantity'),
+            'total' => $this->cartTotal($cart),
+        ];
     }
 }

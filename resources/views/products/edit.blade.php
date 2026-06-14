@@ -87,6 +87,7 @@
         <form
             method="POST"
             action="{{ route('products.update', $product->id) }}"
+            enctype="multipart/form-data"
             class="space-y-8"
         >
 
@@ -172,6 +173,111 @@
                             focus:ring-blue-500
                         "
                     >
+
+                </div>
+
+                <!-- PRODUCT IMAGE -->
+
+                <div>
+
+                    <label
+                        class="
+                            block
+                            text-sm
+                            font-bold
+                            text-slate-700
+                            mb-2
+                        "
+                    >
+                        Product Image
+                    </label>
+
+                    <div class="mb-3 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                        <div class="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-white">
+                            @if($product->image_source)
+                                <img
+                                    src="{{ $product->image_source }}"
+                                    alt="{{ $product->name }}"
+                                    class="h-full w-full object-contain p-2"
+                                    loading="lazy"
+                                >
+                            @else
+                                <span class="text-center text-xs font-black text-slate-400">
+                                    No Image
+                                </span>
+                            @endif
+                        </div>
+
+                        <div class="min-w-0 text-xs font-semibold text-slate-500">
+                            <p class="font-black text-slate-700">Current POS image</p>
+                            <p class="mt-1 truncate">{{ $product->image_url ?: ($product->image_path ?: 'Placeholder will be used') }}</p>
+
+                            @if($product->image_path || $product->image_url)
+                                <label class="mt-2 inline-flex items-center gap-2 font-black text-rose-600">
+                                    <input type="checkbox" name="remove_image" value="1" class="rounded border-slate-300">
+                                    Remove image
+                                </label>
+                            @endif
+                        </div>
+                    </div>
+
+                    <input
+                        type="file"
+                        name="product_image"
+                        accept="image/*"
+                        class="
+                            w-full
+                            rounded-2xl
+                            border
+                            border-slate-300
+                            px-4
+                            py-3
+                            text-sm
+                            focus:outline-none
+                            focus:ring-2
+                            focus:ring-blue-500
+                        "
+                    >
+
+                </div>
+
+                <!-- IMAGE URL -->
+
+                <div>
+
+                    <label
+                        class="
+                            block
+                            text-sm
+                            font-bold
+                            text-slate-700
+                            mb-2
+                        "
+                    >
+                        Image URL
+                    </label>
+
+                    <input
+                        type="url"
+                        name="image_url"
+                        value="{{ old('image_url', $product->image_url) }}"
+                        class="
+                            w-full
+                            rounded-2xl
+                            border
+                            border-slate-300
+                            px-4
+                            py-4
+                            focus:outline-none
+                            focus:ring-2
+                            focus:ring-blue-500
+                        "
+                        placeholder="https://example.com/product.png"
+                    >
+
+                    <p class="mt-2 text-xs font-semibold text-slate-500">
+                        Uploaded image takes priority. Use URL only when no uploaded image exists.
+                    </p>
 
                 </div>
 

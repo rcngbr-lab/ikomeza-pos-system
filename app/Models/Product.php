@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
@@ -46,6 +47,10 @@ class Product extends Model
 
         'expiry_alert_days',
 
+        'image_path',
+
+        'image_url',
+
     ];
 
     protected $casts = [
@@ -64,6 +69,10 @@ class Product extends Model
 
         'expiry_alert_days' => 'integer',
 
+    ];
+
+    protected $appends = [
+        'image_source',
     ];
 
     /*
@@ -121,17 +130,23 @@ class Product extends Model
         );
     }
 
+    public function stockMovements()
+    {
+        return $this->hasMany(
+            StockMovement::class
+        );
+    }
 
+    public function getImageSourceAttribute(): ?string
+    {
+        if (!empty($this->image_path)) {
+            return Storage::disk('public')->url($this->image_path);
+        }
 
-public function stockMovements()
-{
-    return $this->hasMany(
-        StockMovement::class
-    );
-}
+        if (!empty($this->image_url)) {
+            return $this->image_url;
+        }
 
-
-
-
-
+        return null;
+    }
 }

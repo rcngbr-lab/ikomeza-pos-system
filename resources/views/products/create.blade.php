@@ -105,6 +105,7 @@
         <form
             action="{{ route('products.store') }}"
             method="POST"
+            enctype="multipart/form-data"
             class="space-y-8"
         >
 
@@ -183,6 +184,82 @@
                             focus:ring-blue-500
                         "
                         placeholder="SKU-001"
+                    >
+
+                </div>
+
+                <!-- PRODUCT IMAGE -->
+
+                <div>
+
+                    <label
+                        class="
+                            block
+                            text-sm
+                            font-bold
+                            text-slate-700
+                            mb-2
+                        "
+                    >
+                        Product Image
+                    </label>
+
+                    <input
+                        type="file"
+                        name="product_image"
+                        accept="image/*"
+                        class="
+                            w-full
+                            border
+                            border-slate-300
+                            rounded-2xl
+                            px-5
+                            py-3
+                            text-sm
+                            focus:outline-none
+                            focus:ring-2
+                            focus:ring-blue-500
+                        "
+                    >
+
+                    <p class="mt-2 text-xs font-semibold text-slate-500">
+                        Recommended: transparent PNG/JPG, max 3MB. POS cards use contain-fit, no cropping.
+                    </p>
+
+                </div>
+
+                <!-- IMAGE URL -->
+
+                <div>
+
+                    <label
+                        class="
+                            block
+                            text-sm
+                            font-bold
+                            text-slate-700
+                            mb-2
+                        "
+                    >
+                        Image URL
+                    </label>
+
+                    <input
+                        type="url"
+                        name="image_url"
+                        value="{{ old('image_url') }}"
+                        class="
+                            w-full
+                            border
+                            border-slate-300
+                            rounded-2xl
+                            px-5
+                            py-4
+                            focus:outline-none
+                            focus:ring-2
+                            focus:ring-blue-500
+                        "
+                        placeholder="https://example.com/product.png"
                     >
 
                 </div>

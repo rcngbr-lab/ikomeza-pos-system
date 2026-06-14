@@ -8,7 +8,7 @@
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <h2 class="text-base font-black text-slate-950">Current Sale</h2>
-                    <p class="mt-0.5 text-xs font-semibold text-slate-500">
+                    <p class="mt-0.5 text-xs font-semibold text-slate-500" x-text="cartItems.length + ' line items / ' + cartCount + ' units'">
                         {{ count($cart) }} line items / {{ $cartCount }} units
                     </p>
                 </div>
@@ -34,56 +34,61 @@
         </div>
 
         <div class="touch-scroll max-h-[32vh] space-y-2 overflow-y-auto p-2.5 {{ $isDrawer ? 'sm:max-h-[40vh]' : '2xl:max-h-[38vh]' }}">
-            @forelse($cart as $item)
-                @php $lineTotal = (float) $item['price'] * (int) $item['quantity']; @endphp
+            <template x-if="cartItems.length === 0">
+                <div class="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm font-semibold text-slate-500">
+                    Add products to begin checkout.
+                </div>
+            </template>
 
+            <template x-for="item in cartItems" :key="item.id">
                 <div class="rounded-lg bg-slate-50 p-2.5">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
-                            <p class="truncate text-sm font-black text-slate-950">{{ $item['name'] }}</p>
-                            <p class="mt-1 text-xs font-semibold text-slate-500">{{ number_format($item['price']) }} RWF</p>
-                            <p class="mt-1 text-[10px] font-black uppercase tracking-wide {{ ($item['department_code'] ?? '') === 'KITCHEN' ? 'text-amber-700' : 'text-indigo-700' }}">
-                                {{ $item['department'] ?? 'Unassigned' }}
+                            <p class="truncate text-sm font-black text-slate-950" x-text="item.name"></p>
+                            <p class="mt-1 text-xs font-semibold text-slate-500" x-text="money(item.price)"></p>
+                            <p
+                                class="mt-1 text-[10px] font-black uppercase tracking-wide"
+                                :class="item.department_code === 'KITCHEN' ? 'text-amber-700' : 'text-indigo-700'"
+                                x-text="item.department || 'Unassigned'"
+                            >
                             </p>
                         </div>
-                        <p class="shrink-0 text-sm font-black text-slate-950">{{ number_format($lineTotal) }}</p>
+                        <p class="shrink-0 text-sm font-black text-slate-950" x-text="new Intl.NumberFormat().format(cartLineTotal(item))"></p>
                     </div>
 
                     <div class="mt-3 flex items-center justify-between gap-3">
                         <div class="flex items-center gap-2">
-                            <form method="POST" action="{{ route('pos.decrease') }}">
-                                @csrf
-                                <input type="hidden" name="product_id" value="{{ $item['id'] }}">
-                                <button class="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-lg font-black text-slate-700 shadow-sm" aria-label="Decrease quantity">
-                                    -
-                                </button>
-                            </form>
+                            <button
+                                type="button"
+                                class="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-lg font-black text-slate-700 shadow-sm"
+                                aria-label="Decrease quantity"
+                                @click="cartPost(routes.decrease, item.id)"
+                            >
+                                -
+                            </button>
 
-                            <span class="min-w-8 text-center text-sm font-black">{{ $item['quantity'] }}</span>
+                            <span class="min-w-8 text-center text-sm font-black" x-text="item.quantity"></span>
 
-                            <form method="POST" action="{{ route('pos.increase') }}">
-                                @csrf
-                                <input type="hidden" name="product_id" value="{{ $item['id'] }}">
-                                <button class="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-lg font-black text-white shadow-sm" aria-label="Increase quantity">
-                                    +
-                                </button>
-                            </form>
+                            <button
+                                type="button"
+                                class="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-lg font-black text-white shadow-sm"
+                                aria-label="Increase quantity"
+                                @click="cartPost(routes.increase, item.id)"
+                            >
+                                +
+                            </button>
                         </div>
 
-                        <form method="POST" action="{{ route('pos.remove') }}">
-                            @csrf
-                            <input type="hidden" name="product_id" value="{{ $item['id'] }}">
-                            <button class="rounded-lg px-2 py-1 text-xs font-black text-rose-600">
-                                Remove
-                            </button>
-                        </form>
+                        <button
+                            type="button"
+                            class="rounded-lg px-2 py-1 text-xs font-black text-rose-600"
+                            @click="cartPost(routes.remove, item.id)"
+                        >
+                            Remove
+                        </button>
                     </div>
                 </div>
-            @empty
-                <div class="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm font-semibold text-slate-500">
-                    Add products to begin checkout.
-                </div>
-            @endforelse
+            </template>
         </div>
 
         <form method="POST" action="{{ route('pos.checkout') }}" class="space-y-2.5 border-t border-slate-100 p-2.5">
@@ -219,19 +224,22 @@
             <button
                 type="submit"
                 class="h-11 w-full rounded-lg bg-indigo-600 text-sm font-black text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-700 disabled:opacity-50"
-                {{ empty($cart) ? 'disabled' : '' }}
+                :disabled="cartItems.length === 0"
             >
                 Complete Sale
             </button>
         </form>
 
         @if($isDrawer)
-            <form method="POST" action="{{ route('pos.clear') }}" class="border-t border-slate-100 p-3 pt-0">
-                @csrf
-                <button class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-black text-rose-600">
+            <div class="border-t border-slate-100 p-3 pt-0">
+                <button
+                    type="button"
+                    class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-black text-rose-600"
+                    @click="cartPost(routes.clear)"
+                >
                     Clear Cart
                 </button>
-            </form>
+            </div>
         @endif
     </div>
 </div>

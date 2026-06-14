@@ -18,6 +18,7 @@
             activeDepartment: 'All',
             productQuery: '',
             barcodeQuery: '',
+            visibleLimit: Number(config.visibleLimit || 80),
             discount: Number(config.discount || 0),
             payments: (config.initialPayments || []).map((payment) => ({
                 method: payment.method || 'CASH',
@@ -26,8 +27,19 @@
             })),
             paymentMethods: config.paymentMethods || {},
             total: Number(config.total || 0),
+            cartItems: config.cartItems || [],
+            cartCount: Number(config.cartCount || 0),
+            csrfToken: config.csrfToken,
+            routes: config.routes || {},
             vatRate: Number(config.vatRate || 0),
             pricesIncludeVat: Boolean(config.pricesIncludeVat),
+            addingProductId: null,
+            recentProductId: null,
+            cartFeedback: '',
+            productDetail: null,
+            longPressTimer: null,
+            longPressTriggered: false,
+            tapTimers: {},
 
             init() {
                 if (!this.payments.length) {
@@ -37,10 +49,12 @@
 
             setCategory(category) {
                 this.activeCategory = category;
+                this.visibleLimit = Math.max(this.visibleLimit, 80);
             },
 
             setDepartment(department) {
                 this.activeDepartment = department;
+                this.visibleLimit = Math.max(this.visibleLimit, 80);
             },
 
             chipClass(active, tone = 'light') {
@@ -62,11 +76,14 @@
                 const department = card.dataset.department || '';
                 const haystack = card.dataset.search || '';
                 const productBarcode = card.dataset.barcode || '';
+                const index = Number(card.dataset.index || 0);
+                const filtered = query || barcode || this.activeCategory !== 'All' || this.activeDepartment !== 'All';
 
                 return (this.activeCategory === 'All' || category === this.activeCategory)
                     && (this.activeDepartment === 'All' || department === this.activeDepartment)
                     && (!query || haystack.includes(query))
-                    && (!barcode || productBarcode.includes(barcode));
+                    && (!barcode || productBarcode.includes(barcode))
+                    && (filtered || index < this.visibleLimit);
             },
 
             get discountedSubtotal() {
@@ -96,6 +113,133 @@
                 return new Intl.NumberFormat().format(Math.max(Number(value || 0), 0)) + ' RWF';
             },
 
+            tapProduct(event, product) {
+                if (this.longPressTriggered) {
+                    this.longPressTriggered = false;
+                    return;
+                }
+
+                if (product.is_out) {
+                    this.cartFeedback = product.name + ' is out of stock.';
+                    return;
+                }
+
+                if (this.tapTimers[product.id]) {
+                    clearTimeout(this.tapTimers[product.id]);
+                    delete this.tapTimers[product.id];
+                    this.addProduct(event, product, 2);
+                    return;
+                }
+
+                this.tapTimers[product.id] = setTimeout(() => {
+                    delete this.tapTimers[product.id];
+                    this.addProduct(event, product, 1);
+                }, 180);
+            },
+
+            startLongPress(product) {
+                this.longPressTriggered = false;
+                clearTimeout(this.longPressTimer);
+
+                this.longPressTimer = setTimeout(() => {
+                    this.longPressTriggered = true;
+                    this.productDetail = product;
+                }, 520);
+            },
+
+            cancelLongPress() {
+                clearTimeout(this.longPressTimer);
+            },
+
+            async addProduct(event, product, quantity = 1) {
+                const form = event?.currentTarget;
+                const body = form ? new FormData(form) : new FormData();
+
+                if (!form) {
+                    body.append('_token', this.csrfToken);
+                    body.append('product_id', product.id);
+                }
+
+                body.set('quantity', String(quantity));
+                this.addingProductId = product.id;
+
+                try {
+                    const response = await fetch(form ? form.action : this.routes.add, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': this.csrfToken,
+                        },
+                        body,
+                    });
+                    const payload = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(payload.message || 'Cart update failed.');
+                    }
+
+                    this.syncCart(payload);
+                    this.recentProductId = product.id;
+                    this.cartFeedback = payload.message || product.name + ' added to cart.';
+
+                    setTimeout(() => {
+                        if (this.recentProductId === product.id) {
+                            this.recentProductId = null;
+                        }
+                    }, 450);
+                } catch (error) {
+                    this.cartFeedback = error.message || 'Cart update failed.';
+                } finally {
+                    this.addingProductId = null;
+                }
+            },
+
+            async cartPost(route, productId = null) {
+                const body = new FormData();
+                body.append('_token', this.csrfToken);
+
+                if (productId) {
+                    body.append('product_id', productId);
+                }
+
+                try {
+                    const response = await fetch(route, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': this.csrfToken,
+                        },
+                        body,
+                    });
+                    const payload = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(payload.message || 'Cart update failed.');
+                    }
+
+                    this.syncCart(payload);
+                    this.cartFeedback = payload.message || 'Cart updated.';
+                } catch (error) {
+                    this.cartFeedback = error.message || 'Cart update failed.';
+                }
+            },
+
+            syncCart(payload) {
+                this.cartItems = payload.cart_items || [];
+                this.cartCount = Number(payload.cart_count || 0);
+                this.total = Number(payload.total || 0);
+
+                if (this.payments.length === 1) {
+                    this.payments[0].amount = this.grandTotal;
+                }
+            },
+
+            cartLineTotal(item) {
+                return Number(item.price || 0) * Number(item.quantity || 0);
+            },
+
             addPayment() {
                 this.payments.push({ method: 'CASH', amount: 0, reference: '' });
             },
@@ -113,6 +257,10 @@
 
                 this.payments[0].amount = this.grandTotal;
             },
+
+            closeProductDetail() {
+                this.productDetail = null;
+            },
         };
     };
 </script>
@@ -126,6 +274,17 @@
         discount: @js((float) old('discount', 0)),
         paymentMethods: @js($paymentMethods),
         initialPayments: @js(array_values($oldPayments)),
+        cartItems: @js(array_values($cart)),
+        cartCount: @js($cartCount),
+        csrfToken: @js(csrf_token()),
+        visibleLimit: 80,
+        routes: {
+            add: @js(route('pos.add')),
+            increase: @js(route('pos.increase')),
+            decrease: @js(route('pos.decrease')),
+            remove: @js(route('pos.remove')),
+            clear: @js(route('pos.clear')),
+        },
     })"
 >
     <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -149,7 +308,7 @@
                 class="rounded-xl bg-indigo-600 px-3 py-2.5 text-center text-xs font-black text-white shadow-lg shadow-indigo-600/20 xl:hidden"
                 @click="cartOpen = true"
             >
-                Cart {{ $cartCount }}
+                Cart <span x-text="cartCount"></span>
             </button>
         </div>
     </div>
@@ -165,6 +324,14 @@
             {{ session('error') }}
         </div>
     @endif
+
+    <div
+        x-cloak
+        x-show="cartFeedback"
+        x-transition.opacity.duration.150ms
+        class="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-black text-indigo-700"
+        x-text="cartFeedback"
+    ></div>
 
     <div class="pos-workspace grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_390px]">
         <section class="min-w-0 space-y-3">
@@ -187,12 +354,13 @@
                         x-model.debounce.120ms="barcodeQuery"
                     >
 
-                    <form method="POST" action="{{ route('pos.clear') }}" class="hidden lg:block">
-                        @csrf
-                        <button class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:border-rose-200 hover:text-rose-700">
-                            Clear Cart
-                        </button>
-                    </form>
+                    <button
+                        type="button"
+                        class="hidden h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:border-rose-200 hover:text-rose-700 lg:block"
+                        @click="cartPost(routes.clear)"
+                    >
+                        Clear Cart
+                    </button>
                 </div>
 
                 <div class="touch-scroll flex gap-2 overflow-x-auto pb-1">
@@ -242,68 +410,99 @@
 
             <div class="pos-product-grid grid grid-cols-2 gap-2 min-[520px]:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-7 min-[1800px]:grid-cols-8">
                 @forelse($products as $product)
-                    @php
-                        $isLow = $product->track_stock && $product->stock <= $product->alert_stock;
-                        $isOut = $product->track_stock && $product->stock <= 0;
-                        $departmentCode = $product->department?->code ?? null;
-                        $searchText = strtolower(trim(($product->name ?? '') . ' ' . ($product->barcode ?? '') . ' ' . ($product->product_code ?? '') . ' ' . ($product->category->name ?? '') . ' ' . ($product->department->name ?? '')));
-                    @endphp
-
-                    <form
-                        method="POST"
-                        action="{{ route('pos.add') }}"
-                        class="product-card group flex min-h-[112px] min-w-0 flex-col rounded-lg border border-slate-200 bg-white p-2 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md sm:min-h-[124px] {{ $isOut ? 'opacity-55' : '' }}"
-                        data-pos-product
-                        data-category="{{ $product->category->name ?? 'Uncategorized' }}"
-                        data-department="{{ $product->department->name ?? 'Unassigned' }}"
-                        data-search="{{ $searchText }}"
-                        data-barcode="{{ strtolower($product->barcode ?? '') }}"
-                        x-show="productVisible($el)"
-                        x-transition.opacity.duration.120ms
-                    >
-                        @csrf
-                        <input type="hidden" name="product_id" value="{{ $product->id }}">
-
-                        <button type="submit" class="flex h-full min-w-0 flex-1 flex-col text-left disabled:cursor-not-allowed" {{ $isOut ? 'disabled' : '' }}>
-                            <div class="flex min-w-0 items-start gap-2">
-                                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-black text-slate-700">
-                                    {{ strtoupper(substr($product->name, 0, 1)) }}
-                                </span>
-                                <span class="line-clamp-2 min-w-0 text-[12px] font-black leading-4 text-slate-950 sm:text-[13px]">
-                                    {{ $product->name }}
-                                </span>
-                            </div>
-
-                            <div class="mt-auto pt-2">
-                                <p class="text-base font-black leading-none text-slate-950 sm:text-lg">
-                                    {{ number_format($product->selling_price) }}
-                                </p>
-                                <p class="mt-0.5 truncate text-[10px] font-semibold text-slate-500">
-                                    RWF / {{ $product->unit ?? 'item' }}
-                                </p>
-                            </div>
-
-                            <div class="mt-2 flex items-center justify-between gap-2">
-                                <span class="truncate text-[10px] font-bold text-slate-500">
-                                    Stock {{ number_format($product->stock) }}
-                                </span>
-                                <span class="rounded-md px-2 py-1 text-[10px] font-black text-white transition group-hover:bg-indigo-600 {{ $isOut ? 'bg-rose-600' : ($isLow ? 'bg-amber-600' : 'bg-slate-950') }}">
-                                    Add
-                                </span>
-                            </div>
-                        </button>
-                    </form>
+                    @include('pos._product-card', ['product' => $product, 'loopIndex' => $loop->index])
                 @empty
                     <div class="col-span-full rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm font-semibold text-slate-500">
                         No active products are available for POS.
                     </div>
                 @endforelse
             </div>
+
+            @if($products->count() > 80)
+                <div class="flex justify-center py-2">
+                    <button
+                        type="button"
+                        class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700 shadow-sm transition hover:border-indigo-200 hover:text-indigo-700"
+                        x-show="!productQuery && !barcodeQuery && activeCategory === 'All' && activeDepartment === 'All' && visibleLimit < {{ $products->count() }}"
+                        @click="visibleLimit += 80"
+                    >
+                        Load more products
+                    </button>
+                </div>
+            @endif
         </section>
 
         <aside class="hidden min-w-0 xl:block">
             @include('pos._cart-panel', ['cartPanelMode' => 'desktop', 'cartCount' => $cartCount])
         </aside>
+    </div>
+
+    <div
+        class="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/55 p-3 backdrop-blur-sm sm:items-center"
+        x-cloak
+        x-show="productDetail"
+        x-transition.opacity
+        @keydown.escape.window="closeProductDetail"
+        @click.self="closeProductDetail"
+    >
+        <template x-if="productDetail">
+            <div class="w-full max-w-sm rounded-2xl bg-white p-4 shadow-2xl">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-[10px] font-black uppercase tracking-widest text-indigo-600" x-text="productDetail.category"></p>
+                        <h3 class="mt-1 text-xl font-black leading-tight text-slate-950" x-text="productDetail.name"></h3>
+                    </div>
+                    <button
+                        type="button"
+                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-sm font-black text-slate-700"
+                        @click="closeProductDetail"
+                    >
+                        X
+                    </button>
+                </div>
+
+                <div class="mt-4 flex h-44 items-center justify-center rounded-xl bg-white ring-1 ring-slate-100">
+                    <img
+                        x-show="productDetail.image"
+                        :src="productDetail.image"
+                        :alt="productDetail.name"
+                        class="h-full w-full object-contain p-3"
+                        loading="lazy"
+                    >
+                    <div
+                        x-show="!productDetail.image"
+                        class="flex h-full w-full flex-col items-center justify-center rounded-xl bg-slate-50"
+                    >
+                        <span class="text-4xl leading-none">📦</span>
+                        <span class="mt-2 text-xs font-black uppercase tracking-wide text-slate-400">No Image</span>
+                    </div>
+                </div>
+
+                <div class="mt-4 grid grid-cols-2 gap-2 text-sm">
+                    <div class="rounded-xl bg-slate-50 p-3">
+                        <p class="text-[10px] font-black uppercase tracking-wide text-slate-500">Price</p>
+                        <p class="mt-1 text-lg font-black text-slate-950" x-text="money(productDetail.price)"></p>
+                    </div>
+                    <div class="rounded-xl bg-slate-50 p-3">
+                        <p class="text-[10px] font-black uppercase tracking-wide text-slate-500">Unit</p>
+                        <p class="mt-1 text-lg font-black text-slate-950" x-text="productDetail.unit"></p>
+                    </div>
+                    <div class="col-span-2 rounded-xl bg-slate-50 p-3">
+                        <p class="text-[10px] font-black uppercase tracking-wide text-slate-500">Stock</p>
+                        <p class="mt-1 text-base font-black text-slate-950" x-text="productDetail.stock_label"></p>
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    class="mt-4 flex h-11 w-full items-center justify-center rounded-xl bg-indigo-600 text-sm font-black text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-700 disabled:bg-slate-300 disabled:shadow-none"
+                    :disabled="productDetail.is_out"
+                    @click="addProduct(null, productDetail); closeProductDetail()"
+                >
+                    + Add To Cart
+                </button>
+            </div>
+        </template>
     </div>
 
     <button
@@ -312,9 +511,9 @@
         @click="cartOpen = true"
     >
         <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-sm font-black">
-            {{ $cartCount }}
+            <span x-text="cartCount"></span>
         </span>
-        <span class="text-sm font-black">{{ number_format($total) }}</span>
+        <span class="text-sm font-black" x-text="new Intl.NumberFormat().format(total)"></span>
         <span class="text-[10px] font-black text-slate-300">RWF</span>
     </button>
 

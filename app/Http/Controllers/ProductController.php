@@ -16,6 +16,7 @@ use App\Services\AuditLogService;
 use App\Services\CategoryCatalogService;
 use App\Services\DepartmentAccessService;
 use App\Services\StoreStockService;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
@@ -149,6 +150,14 @@ class ProductController extends Controller
 
                 'nullable|in:FINISHED_PRODUCT,RAW_MATERIAL,SERVICE',
 
+            'image_url' =>
+
+                'nullable|url|max:2048',
+
+            'product_image' =>
+
+                'nullable|image|max:3072',
+
         ]);
 
         app(DepartmentAccessService::class)->authorize(
@@ -162,6 +171,10 @@ class ProductController extends Controller
         );
 
         $requestedOpeningStock = (float) $request->stock;
+
+        $imagePath = $request->file('product_image')
+            ? $request->file('product_image')->store('product-images', 'public')
+            : null;
 
         $product = Product::create([
 
@@ -180,6 +193,14 @@ class ProductController extends Controller
             'description' =>
 
                 $request->description,
+
+            'image_path' =>
+
+                $imagePath,
+
+            'image_url' =>
+
+                $request->filled('image_url') ? $request->image_url : null,
 
             'category_id' =>
 
@@ -455,6 +476,18 @@ class ProductController extends Controller
 
                 'nullable|in:FINISHED_PRODUCT,RAW_MATERIAL,SERVICE',
 
+            'image_url' =>
+
+                'nullable|url|max:2048',
+
+            'product_image' =>
+
+                'nullable|image|max:3072',
+
+            'remove_image' =>
+
+                'nullable|boolean',
+
         ]);
 
         app(DepartmentAccessService::class)->authorize(
@@ -484,6 +517,8 @@ class ProductController extends Controller
             'default_store_id',
             'supplier_id',
             'product_type',
+            'image_path',
+            'image_url',
             'buy_price',
             'selling_price',
             'stock',
@@ -492,6 +527,25 @@ class ProductController extends Controller
             'active',
             'status',
         ]);
+
+        $imagePath = $product->image_path;
+
+        if ($request->boolean('remove_image') && $imagePath) {
+            Storage::disk('public')->delete($imagePath);
+            $imagePath = null;
+        }
+
+        if ($request->file('product_image')) {
+            if ($imagePath) {
+                Storage::disk('public')->delete($imagePath);
+            }
+
+            $imagePath = $request->file('product_image')->store('product-images', 'public');
+        }
+
+        $imageUrl = $request->boolean('remove_image')
+            ? null
+            : ($request->filled('image_url') ? $request->image_url : null);
 
         $product->update([
 
@@ -506,6 +560,14 @@ class ProductController extends Controller
             'description' =>
 
                 $request->description,
+
+            'image_path' =>
+
+                $imagePath,
+
+            'image_url' =>
+
+                $imageUrl,
 
             'category_id' =>
 
