@@ -21,28 +21,28 @@
     $maxPayment = max((float) $paymentBreakdown->max('total'), 1);
 @endphp
 
-<div class="space-y-6">
-    <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+<div class="dashboard-shell">
+    <div class="dashboard-header">
         <div>
-            <p class="text-xs font-semibold uppercase tracking-widest text-indigo-600">
+            <p class="dashboard-eyebrow">
                 Executive Dashboard
             </p>
-            <h1 class="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+            <h1 class="dashboard-title">
                 Business Command Center
             </h1>
-            <p class="mt-2 max-w-3xl text-sm text-slate-500">
+            <p class="dashboard-subtitle">
                 Real-time revenue, stock, employee activity, payment mix, and operational risk signals.
             </p>
         </div>
 
-        <div class="grid grid-cols-2 gap-3 sm:flex">
-            <a href="{{ route('pos.index') }}" class="rounded-xl bg-indigo-600 px-4 py-3 text-center text-sm font-black text-white shadow-lg shadow-indigo-600/20">
+        <div class="dashboard-actions">
+            <a href="{{ route('pos.index') }}" class="dashboard-action-primary">
                 Open POS
             </a>
-            <a href="{{ route('requisitions.index') }}" class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-black text-amber-700 shadow-sm">
+            <a href="{{ route('requisitions.index') }}" class="dashboard-action-warn">
                 Requisitions
             </a>
-            <a href="{{ route('reports.index') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center text-sm font-black text-slate-700 shadow-sm">
+            <a href="{{ route('reports.index') }}" class="dashboard-action">
                 Reports
             </a>
         </div>
@@ -50,39 +50,39 @@
 
     @include('dashboard._date_filter')
 
-    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div class="dashboard-stat-grid xl:grid-cols-5">
         @foreach($kpis as $kpi)
-            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p class="text-sm font-semibold text-slate-500">{{ $kpi['label'] }}</p>
-                <p class="mt-3 text-2xl font-black tracking-tight {{ $kpi['tone'] }}">
+            <div class="dashboard-stat-card">
+                <p class="dashboard-stat-label">{{ $kpi['label'] }}</p>
+                <p class="dashboard-stat-value {{ $kpi['tone'] }}">
                     {{ $kpi['value'] }}
                 </p>
             </div>
         @endforeach
     </div>
 
-    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div class="dashboard-stat-grid xl:grid-cols-4">
         @foreach($ops as $item)
-            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p class="text-sm font-semibold text-slate-500">{{ $item['label'] }}</p>
-                <p class="mt-3 text-3xl font-black text-slate-950">{{ $item['value'] }}</p>
+            <div class="dashboard-stat-card">
+                <p class="dashboard-stat-label">{{ $item['label'] }}</p>
+                <p class="dashboard-stat-value">{{ $item['value'] }}</p>
             </div>
         @endforeach
     </div>
 
-    <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <section class="dashboard-panel">
             <div class="flex items-start justify-between gap-4">
                 <div>
-                    <h2 class="text-xl font-black text-slate-950">Revenue Trend</h2>
-                    <p class="mt-1 text-sm text-slate-500">Daily, weekly, monthly, and yearly sales movement.</p>
+                    <h2 class="dashboard-panel-title">Revenue Trend</h2>
+                    <p class="dashboard-panel-subtitle">Daily, weekly, monthly, and yearly sales movement.</p>
                 </div>
-                <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">
+                <span class="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-black text-emerald-700">
                     Live
                 </span>
             </div>
 
-            <div class="mt-6 grid gap-4 md:grid-cols-4">
+            <div class="mt-3 grid gap-3 md:grid-cols-4">
                 @foreach([
                     'Today' => $todayRevenue,
                     'Week' => $weekRevenue,
@@ -91,23 +91,23 @@
                 ] as $label => $amount)
                     @php $width = $yearRevenue > 0 ? max(8, ($amount / $yearRevenue) * 100) : 8; @endphp
                     <div>
-                        <div class="flex items-center justify-between text-sm">
+                        <div class="flex items-center justify-between text-xs">
                             <span class="font-bold text-slate-700">{{ $label }}</span>
                             <span class="font-black text-slate-950">{{ number_format($amount) }}</span>
                         </div>
-                        <div class="mt-3 h-3 rounded-full bg-slate-100">
-                            <div class="h-3 rounded-full bg-indigo-600" style="width: {{ min($width, 100) }}%"></div>
+                        <div class="mt-2 h-2 rounded-full bg-slate-100">
+                            <div class="h-2 rounded-full bg-indigo-600" style="width: {{ min($width, 100) }}%"></div>
                         </div>
                     </div>
                 @endforeach
             </div>
         </section>
 
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-xl font-black text-slate-950">Payment Mix</h2>
-            <p class="mt-1 text-sm text-slate-500">Tender performance across completed sales.</p>
+        <section class="dashboard-panel">
+            <h2 class="dashboard-panel-title">Payment Mix</h2>
+            <p class="dashboard-panel-subtitle">Tender performance across completed sales.</p>
 
-            <div class="mt-5 space-y-4">
+            <div class="mt-3 space-y-2">
                 @forelse($paymentBreakdown as $payment)
                     @php
                         $method = \App\Models\Sale::normalizePaymentMethod($payment->payment_method);
@@ -115,7 +115,7 @@
                     @endphp
 
                     <div>
-                        <div class="flex items-center justify-between gap-3 text-sm">
+                        <div class="flex items-center justify-between gap-3 text-xs">
                             <span class="font-bold text-slate-700">{{ \App\Models\Sale::PAYMENT_METHOD_LABELS[$method] ?? $method }}</span>
                             <span class="font-black text-slate-950">{{ number_format($payment->total) }}</span>
                         </div>
@@ -124,7 +124,7 @@
                         </div>
                     </div>
                 @empty
-                    <p class="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm font-semibold text-slate-500">
+                    <p class="dashboard-empty">
                         No payment activity yet.
                     </p>
                 @endforelse
@@ -132,37 +132,37 @@
         </section>
     </div>
 
-    <div class="grid gap-5 xl:grid-cols-3">
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2">
+    <div class="grid gap-3 xl:grid-cols-3">
+        <section class="dashboard-panel xl:col-span-2">
             <div class="flex items-center justify-between gap-4">
                 <div>
-                    <h2 class="text-xl font-black text-slate-950">Recent Sales</h2>
-                    <p class="mt-1 text-sm text-slate-500">Latest completed transactions.</p>
+                    <h2 class="dashboard-panel-title">Recent Sales</h2>
+                    <p class="dashboard-panel-subtitle">Latest completed transactions.</p>
                 </div>
-                <a href="{{ route('sales.index') }}" class="text-sm font-black text-indigo-600">View all</a>
+                <a href="{{ route('sales.index') }}" class="text-xs font-black text-indigo-600">View all</a>
             </div>
 
-            <div class="mt-5 overflow-x-auto">
-                <table class="w-full min-w-[680px]">
+            <div class="mt-2 overflow-x-auto">
+                <table class="dense-table min-w-[680px]">
                     <thead>
-                        <tr class="border-b border-slate-100 text-left text-xs font-black uppercase tracking-wider text-slate-400">
-                            <th class="py-3">Receipt</th>
-                            <th class="py-3">Cashier</th>
-                            <th class="py-3">Payment</th>
-                            <th class="py-3 text-right">Amount</th>
+                        <tr>
+                            <th>Receipt</th>
+                            <th>Cashier</th>
+                            <th>Payment</th>
+                            <th class="text-right">Amount</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($recentSales as $sale)
-                            <tr class="border-b border-slate-100">
-                                <td class="py-4 text-sm font-black text-slate-950">{{ $sale->receipt_no }}</td>
-                                <td class="py-4 text-sm text-slate-600">{{ $sale->user->name ?? 'N/A' }}</td>
-                                <td class="py-4 text-sm text-slate-600">{{ $sale->paymentMethodLabel() }}</td>
-                                <td class="py-4 text-right text-sm font-black text-emerald-600">{{ number_format($sale->grand_total) }} RWF</td>
+                            <tr>
+                                <td class="font-black text-slate-950">{{ $sale->receipt_no }}</td>
+                                <td>{{ $sale->user->name ?? 'N/A' }}</td>
+                                <td>{{ $sale->paymentMethodLabel() }}</td>
+                                <td class="text-right font-black text-emerald-600">{{ number_format($sale->grand_total) }} RWF</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="py-8 text-center text-sm font-semibold text-slate-500">
+                                <td colspan="4" class="dense-empty">
                                     No sales recorded yet.
                                 </td>
                             </tr>
@@ -172,25 +172,25 @@
             </div>
         </section>
 
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-xl font-black text-slate-950">Low Stock Alerts</h2>
-            <p class="mt-1 text-sm text-slate-500">Products that need attention before service is affected.</p>
+        <section class="dashboard-panel">
+            <h2 class="dashboard-panel-title">Low Stock Alerts</h2>
+            <p class="dashboard-panel-subtitle">Products that need attention before service is affected.</p>
 
-            <div class="mt-5 space-y-3">
+            <div class="dashboard-list">
                 @forelse($lowStockProducts as $product)
-                    <div class="rounded-xl bg-amber-50 p-4">
+                    <div class="py-2">
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
-                                <p class="truncate text-sm font-black text-slate-950">{{ $product->name }}</p>
-                                <p class="mt-1 text-xs text-amber-700">Alert level {{ number_format($product->alert_stock) }}</p>
+                                <p class="dashboard-row-title">{{ $product->name }}</p>
+                                <p class="dashboard-row-meta text-amber-700">Alert {{ number_format($product->alert_stock) }}</p>
                             </div>
-                            <span class="rounded-full bg-white px-3 py-1 text-xs font-black text-amber-700">
+                            <span class="rounded-full bg-amber-50 px-2 py-1 text-[11px] font-black text-amber-700">
                                 {{ number_format($product->stock) }}
                             </span>
                         </div>
                     </div>
                 @empty
-                    <p class="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm font-semibold text-slate-500">
+                    <p class="dashboard-empty">
                         Stock levels are healthy.
                     </p>
                 @endforelse
@@ -198,83 +198,83 @@
         </section>
     </div>
 
-    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section class="dashboard-panel">
         <div class="flex items-center justify-between gap-4">
             <div>
-                <h2 class="text-xl font-black text-slate-950">Top-Selling Products</h2>
-                <p class="mt-1 text-sm text-slate-500">Fast movers for stocking and menu decisions.</p>
+                <h2 class="dashboard-panel-title">Top-Selling Products</h2>
+                <p class="dashboard-panel-subtitle">Fast movers for stocking and menu decisions.</p>
             </div>
-            <a href="{{ route('inventory.index') }}" class="text-sm font-black text-indigo-600">Inventory</a>
+            <a href="{{ route('inventory.index') }}" class="text-xs font-black text-indigo-600">Inventory</a>
         </div>
 
-        <div class="mt-5 grid gap-3 md:grid-cols-5">
+        <div class="mt-3 grid gap-2 md:grid-cols-5">
             @forelse($topProducts as $product)
-                <div class="rounded-xl bg-slate-50 p-4">
-                    <p class="truncate text-sm font-black text-slate-950">{{ $product->product->name ?? 'Deleted product' }}</p>
-                    <p class="mt-3 text-2xl font-black text-indigo-600">{{ number_format($product->units_sold) }}</p>
-                    <p class="text-xs font-semibold text-slate-500">units sold</p>
+                <div class="rounded-lg bg-slate-50 px-3 py-2">
+                    <p class="truncate text-xs font-black text-slate-950">{{ $product->product->name ?? 'Deleted product' }}</p>
+                    <p class="mt-1 text-lg font-black text-indigo-600">{{ number_format($product->units_sold) }}</p>
+                    <p class="text-[11px] font-semibold text-slate-500">units sold</p>
                 </div>
             @empty
-                <p class="md:col-span-5 rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm font-semibold text-slate-500">
+                <p class="dashboard-empty md:col-span-5">
                     No product performance data yet.
                 </p>
             @endforelse
         </div>
     </section>
 
-    <div class="grid gap-5 xl:grid-cols-3">
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-xl font-black text-slate-950">Cashier Performance</h2>
-            <div class="mt-5 space-y-3">
+    <div class="grid gap-3 xl:grid-cols-3">
+        <section class="dashboard-panel">
+            <h2 class="dashboard-panel-title">Cashier Performance</h2>
+            <div class="dashboard-list">
                 @forelse($cashierPerformance as $cashier)
-                    <div class="flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-4">
+                    <div class="dashboard-list-row">
                         <div class="min-w-0">
-                            <p class="truncate text-sm font-black text-slate-950">{{ $cashier->name }}</p>
-                            <p class="mt-1 text-xs font-semibold text-slate-500">{{ $cashier->transactions_today }} transactions</p>
+                            <p class="dashboard-row-title">{{ $cashier->name }}</p>
+                            <p class="dashboard-row-meta">{{ $cashier->transactions_today }} transactions</p>
                         </div>
-                        <span class="text-sm font-black text-emerald-600">{{ number_format($cashier->revenue_today ?? 0) }}</span>
+                        <span class="text-xs font-black text-emerald-600">{{ number_format($cashier->revenue_today ?? 0) }}</span>
                     </div>
                 @empty
-                    <p class="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm font-semibold text-slate-500">
+                    <p class="dashboard-empty">
                         No cashier performance data yet.
                     </p>
                 @endforelse
             </div>
         </section>
 
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-xl font-black text-slate-950">Shift Differences</h2>
-            <div class="mt-5 space-y-3">
+        <section class="dashboard-panel">
+            <h2 class="dashboard-panel-title">Shift Differences</h2>
+            <div class="dashboard-list">
                 @forelse($shiftDifferences as $shift)
-                    <div class="flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-4">
+                    <div class="dashboard-list-row">
                         <div class="min-w-0">
-                            <p class="truncate text-sm font-black text-slate-950">{{ $shift->user?->name ?? 'Unassigned' }}</p>
-                            <p class="mt-1 text-xs font-semibold text-slate-500">{{ $shift->shift_code }}</p>
+                            <p class="dashboard-row-title">{{ $shift->user?->name ?? 'Unassigned' }}</p>
+                            <p class="dashboard-row-meta">{{ $shift->shift_code }}</p>
                         </div>
-                        <span class="text-sm font-black {{ (float) $shift->difference === 0.0 ? 'text-emerald-600' : 'text-rose-600' }}">
+                        <span class="text-xs font-black {{ (float) $shift->difference === 0.0 ? 'text-emerald-600' : 'text-rose-600' }}">
                             {{ number_format($shift->difference) }}
                         </span>
                     </div>
                 @empty
-                    <p class="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm font-semibold text-slate-500">
+                    <p class="dashboard-empty">
                         No closed shifts yet.
                     </p>
                 @endforelse
             </div>
         </section>
 
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-xl font-black text-slate-950">Audit Activity</h2>
-            <div class="mt-5 space-y-3">
+        <section class="dashboard-panel">
+            <h2 class="dashboard-panel-title">Audit Activity</h2>
+            <div class="dashboard-list">
                 @forelse($recentAuditLogs as $log)
-                    <div class="rounded-xl bg-slate-50 p-4">
-                        <p class="truncate text-sm font-black text-slate-950">{{ $log->event ?? 'Activity' }}</p>
-                        <p class="mt-1 line-clamp-2 text-xs font-semibold text-slate-500">
+                    <div class="py-2">
+                        <p class="dashboard-row-title">{{ $log->event ?? 'Activity' }}</p>
+                        <p class="mt-0.5 line-clamp-2 text-[11px] font-semibold text-slate-500">
                             {{ $log->description ?? $log->model ?? 'System activity' }}
                         </p>
                     </div>
                 @empty
-                    <p class="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm font-semibold text-slate-500">
+                    <p class="dashboard-empty">
                         No audit logs yet.
                     </p>
                 @endforelse

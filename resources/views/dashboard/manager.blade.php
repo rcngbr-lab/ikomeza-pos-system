@@ -2,439 +2,210 @@
 
 @section('content')
 
-<div class="p-6">
+<div class="dashboard-shell">
+    <div class="dashboard-header">
+        <div>
+            <p class="dashboard-eyebrow">Manager Dashboard</p>
+            <h1 class="dashboard-title">Operations Control</h1>
+            <p class="dashboard-subtitle">Sales, payments, shifts, refunds, and stock alerts for {{ $dateLabel }}.</p>
+        </div>
 
-    <!-- HEADER -->
-
-    <div class="mb-8">
-
-        <h1 class="text-4xl font-black">
-
-            Manager Dashboard
-
-        </h1>
-
-        <p class="text-gray-500 mt-2">
-
-            Operations, inventory and sales monitoring
-
-        </p>
-
+        <div class="dashboard-actions">
+            <a href="{{ route('pos.index') }}" class="dashboard-action-primary">Open POS</a>
+            <a href="{{ route('requisitions.index') }}" class="dashboard-action-warn">Requisitions</a>
+            <a href="{{ route('reports.index') }}" class="dashboard-action">Reports</a>
+            <a href="{{ route('shifts.history') }}" class="dashboard-action">Shifts</a>
+        </div>
     </div>
 
     @include('dashboard._date_filter')
 
-    <!-- STATS -->
-
-    <div
-        class="grid grid-cols-2
-               md:grid-cols-4
-               gap-5 mb-8"
-    >
-
-        <div class="bg-white rounded-2xl shadow p-5">
-
-            <div class="text-gray-500 text-sm">
-
-                {{ $dateLabel }} Net Revenue
-
-            </div>
-
-            <div class="text-3xl font-black mt-2">
-
-                {{ number_format($todayRevenue) }} Frw
-
-            </div>
-
+    <div class="dashboard-stat-grid xl:grid-cols-5">
+        <div class="dashboard-stat-card">
+            <p class="dashboard-stat-label">{{ $dateLabel }} Net Revenue</p>
+            <p class="dashboard-stat-value text-emerald-600">{{ number_format($todayRevenue) }} RWF</p>
         </div>
 
-        <div class="bg-white rounded-2xl shadow p-5">
-
-            <div class="text-gray-500 text-sm">
-
-                {{ $dateLabel }} Transactions
-
-            </div>
-
-            <div class="text-3xl font-black mt-2">
-
-                {{ $todayTransactions }}
-
-            </div>
-
+        <div class="dashboard-stat-card">
+            <p class="dashboard-stat-label">Transactions</p>
+            <p class="dashboard-stat-value">{{ number_format($todayTransactions) }}</p>
         </div>
 
-        <div class="bg-white rounded-2xl shadow p-5">
-
-            <div class="text-gray-500 text-sm">
-
-                Low Stock Products
-
-            </div>
-
-            <div class="text-3xl font-black mt-2 text-red-600">
-
-                {{ $lowStock->count() }}
-
-            </div>
-
+        <div class="dashboard-stat-card">
+            <p class="dashboard-stat-label">Low Stock</p>
+            <p class="dashboard-stat-value text-rose-600">{{ number_format($lowStock->count()) }}</p>
         </div>
 
-        <div class="bg-white rounded-2xl shadow p-5">
-
-            <div class="text-gray-500 text-sm">
-
-                Stock Status
-
-            </div>
-
-            <div class="text-2xl font-black mt-2 text-green-600">
-
-                Active
-
-            </div>
-
+        <div class="dashboard-stat-card">
+            <p class="dashboard-stat-label">Pending Refunds</p>
+            <p class="dashboard-stat-value text-amber-600">{{ number_format($pendingRefunds->count()) }}</p>
         </div>
 
+        <div class="dashboard-stat-card">
+            <p class="dashboard-stat-label">Stock Status</p>
+            <p class="dashboard-stat-value text-emerald-600">Active</p>
+        </div>
     </div>
 
-    <!-- QUICK ACTIONS -->
+    <div class="grid gap-3 xl:grid-cols-2">
+        <section class="dashboard-panel">
+            <div class="dashboard-panel-header">
+                <div>
+                    <h2 class="dashboard-panel-title">Cashier Performance</h2>
+                    <p class="dashboard-panel-subtitle">{{ $dateLabel }} revenue by cashier/server.</p>
+                </div>
+            </div>
 
-    <div
-        class="bg-white rounded-2xl
-               shadow p-6 mb-8"
-    >
-
-        <h2 class="text-2xl font-black mb-5">
-
-            Quick Actions
-
-        </h2>
-
-        <div class="flex flex-wrap gap-4">
-
-            <a
-                href="{{ route('products.index') }}"
-                class="bg-black hover:bg-gray-800
-                       text-white text-sm font-bold
-                       px-5 py-3 rounded-xl"
-            >
-
-                Products
-
-            </a>
-
-            <a
-                href="{{ route('inventory.index') }}"
-                class="bg-blue-600 hover:bg-blue-700
-                       text-white text-sm font-bold
-                       px-5 py-3 rounded-xl"
-            >
-
-                Stock Logs
-
-            </a>
-
-            <a
-                href="{{ route('requisitions.index') }}"
-                class="bg-amber-500 hover:bg-amber-600
-                       text-white text-sm font-bold
-                       px-5 py-3 rounded-xl"
-            >
-
-                Requisitions
-
-            </a>
-
-            <a
-                href="{{ route('reports.index') }}"
-                class="bg-green-600 hover:bg-green-700
-                       text-white text-sm font-bold
-                       px-5 py-3 rounded-xl"
-            >
-
-                Reports
-
-            </a>
-
-            <a
-                href="{{ route('shifts.history') }}"
-                class="bg-purple-600 hover:bg-purple-700
-                       text-white text-sm font-bold
-                       px-5 py-3 rounded-xl"
-            >
-
-                Shift History
-
-            </a>
-
-        </div>
-
-    </div>
-
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-5 mb-8">
-
-        <div class="bg-white rounded-2xl shadow p-6">
-            <h2 class="text-2xl font-black mb-5">
-                Cashier Performance - {{ $dateLabel }}
-            </h2>
-
-            <div class="space-y-4">
+            <div class="dashboard-list">
                 @forelse($cashierPerformance as $cashier)
-                    <div class="flex items-center justify-between border-b pb-3">
-                        <div>
-                            <div class="font-bold">
-                                {{ $cashier->name }}
-                            </div>
-                            <div class="text-sm text-gray-500">
-                                {{ $cashier->transactions_today }} transactions
-                            </div>
+                    <div class="dashboard-list-row">
+                        <div class="min-w-0">
+                            <p class="dashboard-row-title">{{ $cashier->name }}</p>
+                            <p class="dashboard-row-meta">{{ number_format($cashier->transactions_today) }} transactions</p>
                         </div>
-
-                        <div class="font-black">
-                            {{ number_format($cashier->revenue_today ?? 0) }} Frw
-                        </div>
+                        <span class="shrink-0 text-xs font-black text-emerald-600">{{ number_format($cashier->revenue_today ?? 0) }} RWF</span>
                     </div>
                 @empty
-                    <div class="text-gray-500">
-                        No cashier sales for this period
-                    </div>
+                    <p class="dashboard-empty">No cashier sales for this period.</p>
                 @endforelse
             </div>
-        </div>
+        </section>
 
-        <div class="bg-white rounded-2xl shadow p-6">
-            <h2 class="text-2xl font-black mb-5">
-                Payment Breakdown
-            </h2>
+        <section class="dashboard-panel">
+            <div class="dashboard-panel-header">
+                <div>
+                    <h2 class="dashboard-panel-title">Payment Breakdown</h2>
+                    <p class="dashboard-panel-subtitle">Tender totals and transaction counts.</p>
+                </div>
+            </div>
 
-            <div class="space-y-4">
+            <div class="dashboard-list">
                 @forelse($paymentBreakdown as $payment)
                     @php
                         $method = \App\Models\Sale::normalizePaymentMethod($payment->payment_method);
                     @endphp
 
-                    <div class="flex items-center justify-between border-b pb-3">
-                        <div>
-                            <div class="font-bold">
-                                {{ \App\Models\Sale::PAYMENT_METHOD_LABELS[$method] ?? $method }}
-                            </div>
-                            <div class="text-sm text-gray-500">
-                                {{ $payment->count }} transactions
-                            </div>
+                    <div class="dashboard-list-row">
+                        <div class="min-w-0">
+                            <p class="dashboard-row-title">{{ \App\Models\Sale::PAYMENT_METHOD_LABELS[$method] ?? $method }}</p>
+                            <p class="dashboard-row-meta">{{ number_format($payment->count) }} transactions</p>
                         </div>
-
-                        <div class="font-black">
-                            {{ number_format($payment->total) }} Frw
-                        </div>
+                        <span class="shrink-0 text-xs font-black text-slate-950">{{ number_format($payment->total) }} RWF</span>
                     </div>
                 @empty
-                    <div class="text-gray-500">
-                        No payment data for this period
-                    </div>
+                    <p class="dashboard-empty">No payment data for this period.</p>
                 @endforelse
             </div>
-        </div>
+        </section>
     </div>
 
-    <div class="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-8">
+    <div class="grid gap-3 xl:grid-cols-3">
+        <section class="dashboard-panel">
+            <div class="dashboard-panel-header">
+                <div>
+                    <h2 class="dashboard-panel-title">Shift Differences</h2>
+                    <p class="dashboard-panel-subtitle">Closed-shift cash variance.</p>
+                </div>
+            </div>
 
-        <div class="bg-white rounded-2xl shadow p-6">
-            <h2 class="text-xl font-black mb-4">
-                Shift Differences
-            </h2>
-
-            <div class="space-y-3">
+            <div class="dashboard-list">
                 @forelse($shiftDifferences as $shift)
-                    <div class="flex items-center justify-between border-b pb-3">
-                        <div>
-                            <div class="font-bold">
-                                {{ $shift->user?->name ?? 'Unassigned' }}
-                            </div>
-                            <div class="text-sm text-gray-500">
-                                {{ $shift->shift_code }}
-                            </div>
+                    <div class="dashboard-list-row">
+                        <div class="min-w-0">
+                            <p class="dashboard-row-title">{{ $shift->user?->name ?? 'Unassigned' }}</p>
+                            <p class="dashboard-row-meta">{{ $shift->shift_code }}</p>
                         </div>
-
-                        <div class="font-black {{ (float) $shift->difference === 0.0 ? 'text-green-600' : 'text-red-600' }}">
+                        <span class="shrink-0 text-xs font-black {{ (float) $shift->difference === 0.0 ? 'text-emerald-600' : 'text-rose-600' }}">
                             {{ number_format($shift->difference) }}
-                        </div>
+                        </span>
                     </div>
                 @empty
-                    <div class="text-gray-500">
-                        No closed shifts for this period
-                    </div>
+                    <p class="dashboard-empty">No closed shifts for this period.</p>
                 @endforelse
             </div>
-        </div>
+        </section>
 
-        <div class="bg-white rounded-2xl shadow p-6">
-            <h2 class="text-xl font-black mb-4">
-                Pending Refunds
-            </h2>
+        <section class="dashboard-panel">
+            <div class="dashboard-panel-header">
+                <div>
+                    <h2 class="dashboard-panel-title">Pending Refunds</h2>
+                    <p class="dashboard-panel-subtitle">Refunds waiting for approval.</p>
+                </div>
+            </div>
 
-            <div class="space-y-3">
+            <div class="dashboard-list">
                 @forelse($pendingRefunds as $refund)
-                    <div class="flex items-center justify-between border-b pb-3">
-                        <div>
-                            <div class="font-bold">
-                                {{ $refund->sale?->receipt_no ?? 'Refund' }}
-                            </div>
-                            <div class="text-sm text-gray-500">
-                                {{ $refund->user?->name ?? 'Unknown' }}
-                            </div>
+                    <div class="dashboard-list-row">
+                        <div class="min-w-0">
+                            <p class="dashboard-row-title">{{ $refund->sale?->receipt_no ?? 'Refund' }}</p>
+                            <p class="dashboard-row-meta">{{ $refund->user?->name ?? 'Unknown' }}</p>
                         </div>
-
-                        <div class="font-black">
-                            {{ number_format($refund->amount) }} Frw
-                        </div>
+                        <span class="shrink-0 text-xs font-black text-rose-600">{{ number_format($refund->amount) }} RWF</span>
                     </div>
                 @empty
-                    <div class="text-gray-500">
-                        No pending refunds for this period
-                    </div>
+                    <p class="dashboard-empty">No pending refunds for this period.</p>
                 @endforelse
             </div>
-        </div>
+        </section>
 
-        <div class="bg-white rounded-2xl shadow p-6">
-            <h2 class="text-xl font-black mb-4">
-                Inventory Movements
-            </h2>
+        <section class="dashboard-panel">
+            <div class="dashboard-panel-header">
+                <div>
+                    <h2 class="dashboard-panel-title">Inventory Movements</h2>
+                    <p class="dashboard-panel-subtitle">Recent stock operations.</p>
+                </div>
+            </div>
 
-            <div class="space-y-3">
+            <div class="dashboard-list">
                 @forelse($recentMovements as $movement)
-                    <div class="flex items-center justify-between border-b pb-3">
-                        <div>
-                            <div class="font-bold">
-                                {{ $movement->product?->name ?? 'Product' }}
-                            </div>
-                            <div class="text-sm text-gray-500">
-                                {{ $movement->type }}
-                            </div>
+                    <div class="dashboard-list-row">
+                        <div class="min-w-0">
+                            <p class="dashboard-row-title">{{ $movement->product?->name ?? 'Product' }}</p>
+                            <p class="dashboard-row-meta">{{ $movement->type }}</p>
                         </div>
-
-                        <div class="font-black">
-                            {{ number_format($movement->quantity) }}
-                        </div>
+                        <span class="shrink-0 text-xs font-black text-slate-950">{{ number_format($movement->quantity) }}</span>
                     </div>
                 @empty
-                    <div class="text-gray-500">
-                        No inventory movement for this period
-                    </div>
+                    <p class="dashboard-empty">No inventory movement for this period.</p>
                 @endforelse
             </div>
-        </div>
+        </section>
     </div>
 
-    <!-- LOW STOCK -->
-
-    <div
-        class="bg-white rounded-2xl
-               shadow p-6"
-    >
-
-        <div class="flex justify-between mb-6">
-
-            <h2 class="text-2xl font-black">
-
-                Low Stock Products
-
-            </h2>
-
-            <a
-                href="{{ route('products.index') }}"
-                class="text-blue-600 text-sm font-bold"
-            >
-
-                View Products
-
-            </a>
-
+    <section class="dashboard-panel">
+        <div class="dashboard-panel-header">
+            <div>
+                <h2 class="dashboard-panel-title">Low Stock Products</h2>
+                <p class="dashboard-panel-subtitle">Items below alert level.</p>
+            </div>
+            <a href="{{ route('products.index') }}" class="text-xs font-black text-indigo-600">View Products</a>
         </div>
 
-        <div class="overflow-x-auto">
-
-            <table class="w-full">
-
+        <div class="mt-2 overflow-x-auto">
+            <table class="dense-table min-w-[560px]">
                 <thead>
-
-                    <tr class="border-b">
-
-                        <th class="text-left py-3">
-
-                            Product
-
-                        </th>
-
-                        <th class="text-left py-3">
-
-                            Current Stock
-
-                        </th>
-
-                        <th class="text-left py-3">
-
-                            Alert Level
-
-                        </th>
-
+                    <tr>
+                        <th>Product</th>
+                        <th>Current Stock</th>
+                        <th>Alert Level</th>
                     </tr>
-
                 </thead>
-
                 <tbody>
-
                     @forelse($lowStock as $product)
-
-                        <tr class="border-b">
-
-                            <td class="py-3 font-bold">
-
-                                {{ $product->name }}
-
-                            </td>
-
-                            <td class="py-3 text-red-600 font-bold">
-
-                                {{ $product->stock }}
-
-                            </td>
-
-                            <td class="py-3">
-
-                                {{ $product->alert_stock }}
-
-                            </td>
-
-                        </tr>
-
-                    @empty
-
                         <tr>
-
-                            <td
-                                colspan="3"
-                                class="py-5 text-center
-                                       text-gray-500"
-                            >
-
-                                No low stock products
-
-                            </td>
-
+                            <td class="font-black text-slate-950">{{ $product->name }}</td>
+                            <td class="font-black text-rose-600">{{ number_format($product->stock) }}</td>
+                            <td>{{ number_format($product->alert_stock) }}</td>
                         </tr>
-
+                    @empty
+                        <tr>
+                            <td colspan="3" class="dense-empty">No low stock products.</td>
+                        </tr>
                     @endforelse
-
                 </tbody>
-
             </table>
-
         </div>
-
-    </div>
-
+    </section>
 </div>
 
 @endsection
