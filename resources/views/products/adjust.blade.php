@@ -2,247 +2,343 @@
 
 @section('content')
 
-<div class="max-w-2xl mx-auto p-6">
+<div class="max-w-6xl mx-auto p-4 sm:p-6">
 
-    <div class="bg-white rounded-3xl shadow-sm p-8">
+    <div class="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
 
-        <!-- HEADER -->
+        <div class="space-y-5">
 
-        <div class="mb-8">
+            <div class="bg-white rounded-2xl shadow-sm p-5 sm:p-6">
 
-            <h1 class="text-3xl font-black text-slate-900">
+                <!-- HEADER -->
 
-                Adjust Stock
+                <div class="mb-5">
 
-            </h1>
+                    <h1 class="text-2xl sm:text-3xl font-black text-slate-900">
 
-            <p class="text-slate-500 mt-2">
+                        Adjust Stock
 
-                Update inventory quantity safely
+                    </h1>
 
-            </p>
+                    <p class="text-slate-500 mt-1">
+
+                        Update inventory safely and keep the POS product image current.
+
+                    </p>
+
+                </div>
+
+                <!-- PRODUCT INFO -->
+
+                <div class="flex gap-4 rounded-2xl bg-slate-100 p-4">
+
+                    <div class="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm">
+
+                        @if($product->image_source)
+
+                            <img
+                                src="{{ $product->image_source }}"
+                                alt="{{ $product->name }}"
+                                class="h-full w-full object-contain p-2"
+                                loading="lazy"
+                            >
+
+                        @else
+
+                            <div class="px-3 text-center text-xs font-black uppercase tracking-wide text-slate-400">
+
+                                No Image
+
+                            </div>
+
+                        @endif
+
+                    </div>
+
+                    <div class="min-w-0 flex-1">
+
+                        <h2 class="truncate text-xl font-black text-slate-900">
+
+                            {{ $product->name }}
+
+                        </h2>
+
+                        <dl class="mt-3 grid grid-cols-2 gap-3 text-sm">
+
+                            <div>
+                                <dt class="text-slate-500">Current Stock</dt>
+                                <dd class="font-black text-slate-900">{{ $product->stock }}</dd>
+                            </div>
+
+                            <div>
+                                <dt class="text-slate-500">Unit</dt>
+                                <dd class="font-black text-slate-900">{{ $product->unit ?: 'Item' }}</dd>
+                            </div>
+
+                            <div>
+                                <dt class="text-slate-500">Price</dt>
+                                <dd class="font-black text-slate-900">{{ number_format((float) $product->selling_price) }} RWF</dd>
+                            </div>
+
+                            <div>
+                                <dt class="text-slate-500">Status</dt>
+                                <dd class="font-black text-slate-900">{{ $product->status }}</dd>
+                            </div>
+
+                        </dl>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm p-5 sm:p-6">
+
+                <h2 class="text-xl font-black text-slate-900">
+
+                    Product Image
+
+                </h2>
+
+                <p class="mt-1 text-sm text-slate-500">
+
+                    Upload a clean product image or paste an image URL. Stock quantity is not changed here.
+
+                </p>
+
+                <form
+                    action="{{ route('products.image.update', $product) }}"
+                    method="POST"
+                    enctype="multipart/form-data"
+                    class="mt-5 space-y-4"
+                >
+
+                    @csrf
+
+                    <div>
+
+                        <label class="mb-2 block text-sm font-black text-slate-800">
+
+                            Upload Image
+
+                        </label>
+
+                        <input
+                            type="file"
+                            name="product_image"
+                            accept="image/*"
+                            class="block w-full rounded-xl border border-slate-300 bg-white text-sm file:mr-4 file:border-0 file:bg-indigo-600 file:px-4 file:py-3 file:text-sm file:font-black file:text-white"
+                        >
+
+                        <p class="mt-1 text-xs text-slate-500">PNG, JPG, or WEBP up to 3MB. Uploaded image has priority over URL.</p>
+
+                    </div>
+
+                    <div>
+
+                        <label class="mb-2 block text-sm font-black text-slate-800">
+
+                            Image URL
+
+                        </label>
+
+                        <input
+                            type="url"
+                            name="image_url"
+                            value="{{ old('image_url', $product->image_url) }}"
+                            placeholder="https://example.com/product.png"
+                            class="w-full rounded-xl border-slate-300"
+                        >
+
+                    </div>
+
+                    @if($product->image_path || $product->image_url)
+
+                        <label class="inline-flex items-center gap-2 text-sm font-bold text-slate-700">
+
+                            <input type="checkbox" name="remove_image" value="1" class="rounded border-slate-300">
+                            Remove current image
+
+                        </label>
+
+                    @endif
+
+                    <div class="flex flex-wrap gap-3">
+
+                        <button
+                            type="submit"
+                            class="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-black text-white hover:bg-indigo-700"
+                        >
+
+                            Save Image
+
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
 
         </div>
 
-        <!-- PRODUCT INFO -->
+        <div class="bg-white rounded-2xl shadow-sm p-5 sm:p-6">
 
-        <div class="mb-8 p-5 bg-slate-100 rounded-2xl">
+            <!-- ERRORS -->
 
-            <h2 class="text-2xl font-bold">
+            @if ($errors->any())
 
-                {{ $product->name }}
+                <div class="mb-5 rounded-2xl bg-red-100 p-4 text-red-700">
+
+                    <ul class="list-disc pl-5">
+
+                        @foreach ($errors->all() as $error)
+
+                            <li>{{ $error }}</li>
+
+                        @endforeach
+
+                    </ul>
+
+                </div>
+
+            @endif
+
+            <!-- SUCCESS -->
+
+            @if(session('success'))
+
+                <div class="mb-5 rounded-2xl bg-green-100 p-4 text-green-700">
+
+                    {{ session('success') }}
+
+                </div>
+
+            @endif
+
+            <h2 class="text-xl font-black text-slate-900">
+
+                Stock Change Request
 
             </h2>
 
-            <div class="mt-3 text-slate-600">
+            <p class="mt-1 text-sm text-slate-500">
 
-                Current Stock:
-                <span class="font-black">
+                This creates a pending requisition. Live stock changes only after approval.
 
-                    {{ $product->stock }}
+            </p>
 
-                </span>
+            <!-- FORM -->
 
-            </div>
+            <form
+                action="{{ route(
+                    'products.adjust.stock',
+                    $product->id
+                ) }}"
+                method="POST"
+                class="mt-6 space-y-5"
+            >
+
+                @csrf
+
+                <!-- TYPE -->
+
+                <div>
+
+                    <label class="mb-2 block font-bold">
+
+                        Adjustment Type
+
+                    </label>
+
+                    <select
+                        name="type"
+                        class="w-full rounded-xl border-slate-300"
+                        required
+                    >
+
+                        <option value="ADD">
+
+                            Add Stock
+
+                        </option>
+
+                        <option value="REMOVE">
+
+                            Remove Stock
+
+                        </option>
+
+                    </select>
+
+                </div>
+
+                <!-- QUANTITY -->
+
+                <div>
+
+                    <label class="mb-2 block font-bold">
+
+                        Quantity
+
+                    </label>
+
+                    <input
+                        type="number"
+                        name="quantity"
+                        min="1"
+                        class="w-full rounded-xl border-slate-300"
+                        required
+                    >
+
+                </div>
+
+                <!-- REASON -->
+
+                <div>
+
+                    <label class="mb-2 block font-bold">
+
+                        Reason
+
+                    </label>
+
+                    <textarea
+                        name="reason"
+                        rows="5"
+                        class="w-full rounded-xl border-slate-300"
+                    ></textarea>
+
+                </div>
+
+                <!-- BUTTONS -->
+
+                <div class="flex flex-wrap items-center gap-3">
+
+                    <button
+                        type="submit"
+                        class="rounded-xl bg-orange-500 px-5 py-3 text-sm font-black text-white hover:bg-orange-600"
+                    >
+
+                        Save Adjustment
+
+                    </button>
+
+                    <a
+                        href="{{ route('products.index') }}"
+                        class="rounded-xl bg-slate-200 px-5 py-3 text-sm font-black text-slate-700 hover:bg-slate-300"
+                    >
+
+                        Cancel
+
+                    </a>
+
+                </div>
+
+            </form>
 
         </div>
-
-        <!-- ERRORS -->
-
-        @if ($errors->any())
-
-            <div class="
-                mb-6
-                bg-red-100
-                text-red-700
-                p-4
-                rounded-2xl
-            ">
-
-                <ul class="list-disc pl-5">
-
-                    @foreach ($errors->all() as $error)
-
-                        <li>{{ $error }}</li>
-
-                    @endforeach
-
-                </ul>
-
-            </div>
-
-        @endif
-
-        <!-- SUCCESS -->
-
-        @if(session('success'))
-
-            <div class="
-                mb-6
-                bg-green-100
-                text-green-700
-                p-4
-                rounded-2xl
-            ">
-
-                {{ session('success') }}
-
-            </div>
-
-        @endif
-
-        <!-- FORM -->
-
-        <form
-            action="{{ route(
-                'products.adjust.stock',
-                $product->id
-            ) }}"
-            method="POST"
-            class="space-y-6"
-        >
-
-            @csrf
-
-            <!-- TYPE -->
-
-            <div>
-
-                <label class="
-                    block
-                    font-bold
-                    mb-2
-                ">
-
-                    Adjustment Type
-
-                </label>
-
-                <select
-                    name="type"
-                    class="
-                        w-full
-                        rounded-2xl
-                        border-slate-300
-                    "
-                    required
-                >
-
-                    <option value="ADD">
-
-                        Add Stock
-
-                    </option>
-
-                    <option value="REMOVE">
-
-                        Remove Stock
-
-                    </option>
-
-                </select>
-
-            </div>
-
-            <!-- QUANTITY -->
-
-            <div>
-
-                <label class="
-                    block
-                    font-bold
-                    mb-2
-                ">
-
-                    Quantity
-
-                </label>
-
-                <input
-                    type="number"
-                    name="quantity"
-                    min="1"
-                    class="
-                        w-full
-                        rounded-2xl
-                        border-slate-300
-                    "
-                    required
-                >
-
-            </div>
-
-            <!-- REASON -->
-
-            <div>
-
-                <label class="
-                    block
-                    font-bold
-                    mb-2
-                ">
-
-                    Reason
-
-                </label>
-
-                <textarea
-                    name="reason"
-                    rows="4"
-                    class="
-                        w-full
-                        rounded-2xl
-                        border-slate-300
-                    "
-                ></textarea>
-
-            </div>
-
-            <!-- BUTTONS -->
-
-            <div class="
-                flex
-                items-center
-                gap-4
-            ">
-
-                <button
-                    type="submit"
-                    class="
-                        bg-orange-500
-                        hover:bg-orange-600
-                        text-white
-                        px-6
-                        py-4
-                        rounded-2xl
-                        font-bold
-                    "
-                >
-
-                    Save Adjustment
-
-                </button>
-
-                <a
-                    href="{{ route('products.index') }}"
-                    class="
-                        bg-slate-200
-                        hover:bg-slate-300
-                        text-slate-700
-                        px-6
-                        py-4
-                        rounded-2xl
-                        font-bold
-                    "
-                >
-
-                    Cancel
-
-                </a>
-
-            </div>
-
-        </form>
 
     </div>
 

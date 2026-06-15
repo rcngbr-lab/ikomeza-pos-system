@@ -13,7 +13,9 @@ use App\Models\StoreStock;
 use App\Models\User;
 use App\Services\PaymentReconciliationService;
 use App\Services\StoreStockService;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 function marketUser(string $role, Branch $branch): User {
     return User::factory()->create([
@@ -347,4 +349,36 @@ it('keeps manager audit log visibility inside the assigned branch', function () 
         ->assertOk()
         ->assertSee('Own branch sale log')
         ->assertDontSee('Other branch sale log');
+});
+
+it('allows a manager to update a product image from the adjust page', function () {
+    Storage::fake('public');
+
+    $branch = Branch::create(['name' => 'Main', 'code' => 'MAIN', 'status' => 'ACTIVE']);
+    $manager = marketUser('MANAGER', $branch);
+    $product = marketProduct($branch);
+
+    $this->actingAs($manager)
+        ->post(route('products.image.update', $product), [
+            'product_image' => new UploadedFile(
+                tap(tempnam(sys_get_temp_dir(), 'pos-product-image-'), function ($path) {
+                    file_put_contents(
+                        $path,
+                        base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=')
+                    );
+                }),
+                'bazooka.png',
+                'image/png',
+                null,
+                true
+            ),
+        ])
+        ->assertRedirect(route('products.adjust', $product));
+
+    $product->refresh();
+
+    expect($product->image_path)->not->toBeNull()
+        ->and($product->image_url)->toBeNull();
+
+    Storage::disk('public')->assertExists($product->image_path);
 });

@@ -88,6 +88,12 @@ Route::middleware([
     )->name('products.adjust.stock')
     ->middleware('admin.manager');
 
+    Route::post(
+        '/products/{product}/image',
+        [ProductController::class, 'updateImage']
+    )->name('products.image.update')
+    ->middleware('admin.manager');
+
     /*
     |--------------------------------------------------------------------------
     | CATEGORIES

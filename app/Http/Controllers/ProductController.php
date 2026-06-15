@@ -800,6 +800,101 @@ class ProductController extends Controller
             );
     }
 
+    public function updateImage(
+        Request $request,
+        Product $product
+    ) {
+        app(DepartmentAccessService::class)->authorize(
+            $request->user(),
+            $product->department_id
+        );
+        $this->authorizeProductBranch($request->user(), $product);
+
+        $request->validate([
+
+            'product_image' =>
+
+                'nullable|image|max:3072',
+
+            'image_url' =>
+
+                'nullable|url|max:2048',
+
+            'remove_image' =>
+
+                'nullable|boolean',
+
+        ]);
+
+        if (!$request->hasFile('product_image') && !$request->filled('image_url') && !$request->boolean('remove_image')) {
+            return back()
+                ->withErrors([
+                    'product_image' => 'Choose an image, paste an image URL, or select remove image.',
+                ]);
+        }
+
+        $oldValues = $product->only([
+            'image_path',
+            'image_url',
+        ]);
+
+        $imagePath = $product->image_path;
+
+        if (
+            (
+                $request->boolean('remove_image')
+                || $request->hasFile('product_image')
+                || $request->filled('image_url')
+            )
+            && $imagePath
+        ) {
+            Storage::disk('public')->delete($imagePath);
+            $imagePath = null;
+        }
+
+        if ($request->hasFile('product_image')) {
+            $imagePath = $request->file('product_image')->store('product-images', 'public');
+        }
+
+        $imageUrl = $request->boolean('remove_image')
+            ? null
+            : ($request->filled('image_url') ? $request->image_url : $product->image_url);
+
+        $product->update([
+            'image_path' => $imagePath,
+            'image_url' => $imageUrl,
+        ]);
+
+        AuditLogService::record([
+            'action' => $request->boolean('remove_image')
+                ? 'PRODUCT_IMAGE_REMOVED'
+                : 'PRODUCT_IMAGE_UPDATED',
+            'module' => 'Products',
+            'model' => $product,
+            'department_id' => $product->department_id,
+            'reference' => $product->product_code,
+            'description' => 'Updated POS image for product ' . $product->name . '.',
+            'old_values' => $oldValues,
+            'new_values' => $product->fresh()->only([
+                'image_path',
+                'image_url',
+            ]),
+            'severity' => 'INFO',
+        ]);
+
+        return redirect()
+
+            ->route('products.adjust', $product)
+
+            ->with(
+
+                'success',
+
+                'Product image updated. POS cards will use the new image.'
+
+            );
+    }
+
     /*
     |--------------------------------------------------------------------------
     | DELETE PRODUCT
