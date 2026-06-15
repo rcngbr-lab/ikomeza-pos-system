@@ -177,6 +177,8 @@ class ProductController extends Controller
             (int) $request->department_id
         );
 
+        $this->ensureNoDuplicateProductCard($request);
+
         $requestedOpeningStock = (float) $request->stock;
 
         $imagePath = $request->file('product_image')
@@ -514,6 +516,8 @@ class ProductController extends Controller
             (int) $request->category_id,
             (int) $request->department_id
         );
+
+        $this->ensureNoDuplicateProductCard($request, $product);
 
         if (abs((float) $request->stock - (float) $product->stock) > 0.00001) {
             return back()
@@ -869,5 +873,37 @@ class ProductController extends Controller
         }
 
         abort_unless((int) $product->branch_id === (int) $user->branch_id, 403);
+    }
+
+    private function ensureNoDuplicateProductCard(Request $request, ?Product $ignoreProduct = null): void
+    {
+        $branchId = $ignoreProduct?->branch_id ?? $request->user()->branch_id;
+        $name = $this->normalizeProductCardValue($request->input('name'));
+        $unit = $this->normalizeProductCardValue($request->input('unit') ?: 'item');
+        $price = number_format((float) $request->input('selling_price', 0), 2, '.', '');
+
+        $duplicate = Product::query()
+            ->where('active', true)
+            ->where('branch_id', $branchId)
+            ->where('department_id', $request->integer('department_id'))
+            ->where('category_id', $request->integer('category_id'))
+            ->when($ignoreProduct, fn ($query) => $query->where('id', '<>', $ignoreProduct->id))
+            ->get(['id', 'name', 'unit', 'selling_price'])
+            ->first(function (Product $product) use ($name, $unit, $price) {
+                return $this->normalizeProductCardValue($product->name) === $name
+                    && $this->normalizeProductCardValue($product->unit ?: 'item') === $unit
+                    && number_format((float) $product->selling_price, 2, '.', '') === $price;
+            });
+
+        if ($duplicate) {
+            throw ValidationException::withMessages([
+                'name' => 'This product already exists for the same branch, department, category, unit, and selling price. Update the existing product instead of creating a duplicate POS card.',
+            ]);
+        }
+    }
+
+    private function normalizeProductCardValue(?string $value): string
+    {
+        return strtolower((string) preg_replace('/\s+/', ' ', trim((string) $value)));
     }
 }

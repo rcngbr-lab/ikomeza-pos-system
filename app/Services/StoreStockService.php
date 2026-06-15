@@ -17,18 +17,33 @@ class StoreStockService
         if ($product->default_store_id) {
             $store = Store::find($product->default_store_id);
 
-            if ($store) {
+            if ($store && (!$product->branch_id || !$store->branch_id || (int) $store->branch_id === (int) $product->branch_id)) {
                 return $store;
             }
         }
 
         $departmentCode = strtoupper((string) $product->department?->code);
 
-        return Store::where('code', match ($departmentCode) {
+        $storeType = match ($departmentCode) {
             'KITCHEN' => 'KITCHEN',
             'BAR' => 'BAR',
             default => 'MAIN',
-        })->first();
+        };
+
+        return Store::query()
+            ->where(function ($typeQuery) use ($storeType) {
+                $typeQuery->where('type', $storeType)
+                    ->orWhere('code', $storeType);
+            })
+            ->where('active', true)
+            ->when($product->branch_id, function ($query) use ($product) {
+                $query->where(function ($branchQuery) use ($product) {
+                    $branchQuery->where('branch_id', $product->branch_id)
+                        ->orWhereNull('branch_id');
+                })
+                    ->orderByRaw('CASE WHEN branch_id = ? THEN 0 ELSE 1 END', [(int) $product->branch_id]);
+            })
+            ->first();
     }
 
     public function ensureBalance(Product $product, Store $store): StoreStock

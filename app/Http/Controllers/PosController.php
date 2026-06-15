@@ -13,6 +13,7 @@ use App\Services\CategoryCatalogService;
 use App\Services\BranchAccessService;
 use App\Services\SaleService;
 use App\Services\TaxService;
+use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
 
 class PosController extends Controller
@@ -45,6 +46,8 @@ class PosController extends Controller
             ->when($selectedBranchId, fn ($query) => $query->where('branch_id', $selectedBranchId))
             ->orderBy('name')
             ->get();
+
+        $products = $this->uniqueProductsForPos($products);
 
         $categories = Category::with('department')
             ->when($selectedBranchId, fn ($query) => $query->where(function ($categories) use ($selectedBranchId) {
@@ -426,5 +429,49 @@ class PosController extends Controller
             'cart_count' => collect($items)->sum('quantity'),
             'total' => $this->cartTotal($cart),
         ];
+    }
+
+    private function uniqueProductsForPos(Collection $products): Collection
+    {
+        return $products
+            ->groupBy(fn (Product $product) => $this->posProductCardKey($product))
+            ->map(function (Collection $matches) {
+                return $matches
+                    ->sort(function (Product $a, Product $b) {
+                        return $this->posProductCardScore($b) <=> $this->posProductCardScore($a);
+                    })
+                    ->first();
+            })
+            ->values();
+    }
+
+    private function posProductCardKey(Product $product): string
+    {
+        $name = $this->normalizeProductCardValue($product->name);
+        $unit = $this->normalizeProductCardValue($product->unit ?: 'item');
+        $price = number_format((float) $product->selling_price, 2, '.', '');
+
+        return implode('|', [
+            (int) ($product->branch_id ?? 0),
+            (int) ($product->department_id ?? 0),
+            (int) ($product->category_id ?? 0),
+            $name,
+            $unit,
+            $price,
+        ]);
+    }
+
+    private function posProductCardScore(Product $product): float
+    {
+        $stock = max((float) $product->stock, 0);
+        $hasImage = $product->image_source ? 1 : 0;
+        $inStock = (!$product->track_stock || $stock > 0) ? 1 : 0;
+
+        return ($inStock * 1_000_000) + ($hasImage * 100_000) + $stock + ((float) $product->id / 1_000_000);
+    }
+
+    private function normalizeProductCardValue(?string $value): string
+    {
+        return strtolower((string) preg_replace('/\s+/', ' ', trim((string) $value)));
     }
 }

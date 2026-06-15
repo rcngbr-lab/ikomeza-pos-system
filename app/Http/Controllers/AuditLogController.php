@@ -8,6 +8,7 @@ use App\Models\Department;
 use App\Models\StockRequisition;
 use App\Models\User;
 use App\Services\DepartmentAccessService;
+use App\Services\BranchAccessService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -81,7 +82,7 @@ class AuditLogController extends Controller
             'summary' => $this->summary($request, $filteredQuery),
             'users' => $this->visibleUsers($request),
             'departments' => app(DepartmentAccessService::class)->visibleDepartments($request->user()),
-            'branches' => Branch::orderBy('name')->get(['id', 'name', 'code']),
+            'branches' => app(BranchAccessService::class)->visibleBranches($request->user()),
             'modules' => $this->visibleModules($request->user()),
             'actions' => self::ACTIONS,
             'severities' => self::SEVERITIES,
@@ -158,17 +159,18 @@ class AuditLogController extends Controller
         }
 
         if ($user->hasOperationalRole('MANAGER')) {
-            return $query->whereNotIn('module', ['Security', 'Users', 'Roles', 'Permissions']);
+            return $this->scopeAuditBranch($query, $user)
+                ->whereNotIn('module', ['Security', 'Users', 'Roles', 'Permissions']);
         }
 
         if ($user->hasOperationalRole('CASHIER', 'WAITER', 'SERVER')) {
-            return $query
+            return $this->scopeAuditBranch($query, $user)
                 ->where('user_id', $user->id)
                 ->whereIn('module', ['Sales', 'Refunds', 'Shifts']);
         }
 
         if ($user->hasOperationalRole('STORE_KEEPER')) {
-            return $query
+            return $this->scopeAuditBranch($query, $user)
                 ->whereIn('module', ['Inventory', 'Products', 'Requisitions', 'Purchases', 'Suppliers'])
                 ->when($user->department_id, function ($builder) use ($user) {
                     $builder->where(function ($departmentQuery) use ($user) {
@@ -183,7 +185,7 @@ class AuditLogController extends Controller
 
             abort_if(empty($allowed), 403);
 
-            return $query
+            return $this->scopeAuditBranch($query, $user)
                 ->whereIn('module', ['Sales', 'Inventory', 'Products', 'Requisitions', 'Refunds'])
                 ->whereIn('department_id', $allowed);
         }
@@ -364,6 +366,10 @@ class AuditLogController extends Controller
         $user = $request->user();
 
         return User::query()
+            ->when(
+                !$user->hasOperationalRole('ADMIN', 'ADMINISTRATOR') && $user->branch_id,
+                fn ($query) => $query->where('branch_id', $user->branch_id)
+            )
             ->when($user->hasOperationalRole('CASHIER', 'WAITER', 'SERVER'), fn ($query) => $query->whereKey($user->id))
             ->when(
                 $user->hasOperationalRole('KITCHEN_MANAGER', 'KITCHEN_CHIEF', 'BAR_MANAGER', 'BAR_CHIEF', 'BARTENDER', 'STORE_KEEPER') && $user->department_id,
@@ -374,6 +380,21 @@ class AuditLogController extends Controller
             )
             ->orderBy('name')
             ->get(['id', 'name', 'username', 'email', 'role']);
+    }
+
+    private function scopeAuditBranch(Builder $query, $user): Builder
+    {
+        if (!$user->branch_id) {
+            abort(403, 'Your account is not assigned to a branch.');
+        }
+
+        return $query->where(function ($branchQuery) use ($user) {
+            $branchQuery->where('branch_id', $user->branch_id)
+                ->orWhere(function ($legacyQuery) use ($user) {
+                    $legacyQuery->whereNull('branch_id')
+                        ->where('user_id', $user->id);
+                });
+        });
     }
 
     private function authorizeAccess(Request $request): void

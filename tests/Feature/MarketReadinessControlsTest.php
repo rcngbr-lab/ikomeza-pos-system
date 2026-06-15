@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Branch;
+use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\Payment;
@@ -11,6 +12,7 @@ use App\Models\Store;
 use App\Models\StoreStock;
 use App\Models\User;
 use App\Services\PaymentReconciliationService;
+use App\Services\StoreStockService;
 use Illuminate\Support\Facades\Hash;
 
 function marketUser(string $role, Branch $branch): User {
@@ -221,4 +223,128 @@ it('hides another branch sales from a manager', function () {
         ->get(route('sales.index'))
         ->assertOk()
         ->assertDontSee('RCPT-BRANCH-A');
+});
+
+it('collapses duplicate POS product cards for the same branch and product identity', function () {
+    $branch = Branch::create(['name' => 'Main', 'code' => 'MAIN', 'status' => 'ACTIVE']);
+    $cashier = marketUser('CASHIER', $branch);
+    $product = marketProduct($branch, 1200);
+
+    $duplicate = $product->replicate(['product_code', 'barcode']);
+    $duplicate->product_code = 'PRD-DUP-' . uniqid();
+    $duplicate->barcode = 'BC-DUP-' . uniqid();
+    $duplicate->stock = 25;
+    $duplicate->save();
+
+    Shift::create([
+        'user_id' => $cashier->id,
+        'branch_id' => $branch->id,
+        'shift_code' => 'SHIFT-DUPLICATE-CARDS',
+        'opening_cash' => 0,
+        'expected_cash' => 0,
+        'status' => 'OPEN',
+        'is_open' => true,
+        'opened_at' => now(),
+    ]);
+
+    $response = $this->actingAs($cashier)
+        ->get(route('pos.index'))
+        ->assertOk();
+
+    $products = $response->viewData('products');
+
+    expect($products)->toHaveCount(1)
+        ->and($products->first()->name)->toBe($product->name)
+        ->and($products->first()->stock)->toEqual('25.00');
+});
+
+it('selects the branch-owned default store by type before legacy global store codes', function () {
+    $branchA = Branch::create(['name' => 'A', 'code' => 'A', 'status' => 'ACTIVE']);
+    $branchB = Branch::create(['name' => 'B', 'code' => 'B', 'status' => 'ACTIVE']);
+    $department = Department::firstOrCreate(['code' => 'BAR'], ['name' => 'Bar', 'active' => true, 'sort_order' => 1]);
+    $category = Category::firstOrCreate(['code' => 'BEER'], ['name' => 'Beer', 'department_id' => $department->id, 'active' => true]);
+
+    Store::create([
+        'code' => 'GLOBAL-BAR',
+        'branch_id' => null,
+        'name' => 'Global Bar Store',
+        'type' => 'BAR',
+        'department_id' => $department->id,
+        'active' => true,
+        'sort_order' => 1,
+    ]);
+
+    Store::create([
+        'code' => 'A-BAR',
+        'branch_id' => $branchA->id,
+        'name' => 'A Bar Store',
+        'type' => 'BAR',
+        'department_id' => $department->id,
+        'active' => true,
+        'sort_order' => 2,
+    ]);
+
+    $branchBStore = Store::create([
+        'code' => 'B-BAR',
+        'branch_id' => $branchB->id,
+        'name' => 'B Bar Store',
+        'type' => 'BAR',
+        'department_id' => $department->id,
+        'active' => true,
+        'sort_order' => 3,
+    ]);
+
+    $product = Product::create([
+        'product_code' => 'PRD-BRANCH-B-' . uniqid(),
+        'branch_id' => $branchB->id,
+        'barcode' => 'BC-BRANCH-B-' . uniqid(),
+        'name' => 'Branch B Beer',
+        'category_id' => $category->id,
+        'department_id' => $department->id,
+        'product_type' => 'FINISHED_PRODUCT',
+        'buy_price' => 500,
+        'selling_price' => 1000,
+        'track_stock' => true,
+        'stock' => 10,
+        'alert_stock' => 2,
+        'unit' => 'Bottle',
+        'active' => true,
+        'status' => 'ACTIVE',
+    ]);
+
+    expect(app(StoreStockService::class)->defaultStoreFor($product)?->id)->toBe($branchBStore->id);
+});
+
+it('keeps manager audit log visibility inside the assigned branch', function () {
+    $branchA = Branch::create(['name' => 'A', 'code' => 'A', 'status' => 'ACTIVE']);
+    $branchB = Branch::create(['name' => 'B', 'code' => 'B', 'status' => 'ACTIVE']);
+    $manager = marketUser('MANAGER', $branchB);
+
+    AuditLog::create([
+        'user_id' => $manager->id,
+        'branch_id' => $branchA->id,
+        'action' => 'SALE_COMPLETED',
+        'module' => 'Sales',
+        'event' => 'SALE_COMPLETED',
+        'model' => 'Sale',
+        'description' => 'Other branch sale log',
+        'severity' => 'INFO',
+    ]);
+
+    AuditLog::create([
+        'user_id' => $manager->id,
+        'branch_id' => $branchB->id,
+        'action' => 'SALE_COMPLETED',
+        'module' => 'Sales',
+        'event' => 'SALE_COMPLETED',
+        'model' => 'Sale',
+        'description' => 'Own branch sale log',
+        'severity' => 'INFO',
+    ]);
+
+    $this->actingAs($manager)
+        ->get(route('audit.logs'))
+        ->assertOk()
+        ->assertSee('Own branch sale log')
+        ->assertDontSee('Other branch sale log');
 });
