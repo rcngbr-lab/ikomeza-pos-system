@@ -387,6 +387,12 @@ Route::middleware([
     ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER,CASHIER,WAITER,SERVER');
 
     Route::get(
+        '/sales/report/print',
+        [SaleController::class, 'printReport']
+    )->name('sales.report.print')
+    ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,KITCHEN_MANAGER,KITCHEN_CHIEF,BAR_MANAGER,BAR_CHIEF,BARTENDER,CASHIER,WAITER,SERVER');
+
+    Route::get(
         '/sales/{sale}/receipt',
         [SaleController::class, 'receipt']
     )->name('sales.receipt')

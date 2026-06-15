@@ -10,7 +10,9 @@
         'yearly' => 'Yearly',
     ];
     $query = request()->query();
+    $printQuery = collect($query)->except('page')->all();
     $canRefund = auth()->user()->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER');
+    $isPersonalSales = auth()->user()->hasOperationalRole('CASHIER', 'WAITER', 'SERVER');
 @endphp
 
 <div class="dense-page">
@@ -21,15 +23,25 @@
             <p class="dense-subtitle">Receipts, status, refunds, and cashier accountability in one dense table.</p>
         </div>
 
-        <div class="touch-scroll flex gap-1.5 overflow-x-auto pb-1">
-            @foreach($periodChips as $value => $label)
-                <a
-                    href="{{ route('sales.index', array_merge($query, ['filter' => $value, 'page' => null])) }}"
-                    class="dense-chip {{ $filter === $value ? 'dense-chip-active' : '' }}"
-                >
-                    {{ $label }}
-                </a>
-            @endforeach
+        <div class="flex flex-col gap-2 sm:items-end">
+            <div class="touch-scroll flex gap-1.5 overflow-x-auto pb-1">
+                @foreach($periodChips as $value => $label)
+                    <a
+                        href="{{ route('sales.index', array_merge($query, ['filter' => $value, 'page' => null])) }}"
+                        class="dense-chip {{ $filter === $value ? 'dense-chip-active' : '' }}"
+                    >
+                        {{ $label }}
+                    </a>
+                @endforeach
+            </div>
+
+            <a
+                href="{{ route('sales.report.print', $printQuery) }}"
+                target="_blank"
+                class="dense-btn-dark w-full justify-center sm:w-auto"
+            >
+                {{ $isPersonalSales ? 'Print My Sales A4' : 'Print Report A4' }}
+            </a>
         </div>
     </div>
 

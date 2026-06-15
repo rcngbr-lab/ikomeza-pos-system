@@ -227,6 +227,58 @@ it('hides another branch sales from a manager', function () {
         ->assertDontSee('RCPT-BRANCH-A');
 });
 
+it('does not render audit logs navigation for cashiers', function () {
+    $branch = Branch::create(['name' => 'Main', 'code' => 'MAIN', 'status' => 'ACTIVE']);
+    $cashier = marketUser('CASHIER', $branch);
+
+    $this->actingAs($cashier)
+        ->get(route('sales.index'))
+        ->assertOk()
+        ->assertDontSee('Audit Logs')
+        ->assertDontSee('audit-logs');
+});
+
+it('prints only the authenticated cashier sales report', function () {
+    $branch = Branch::create(['name' => 'Main', 'code' => 'MAIN', 'status' => 'ACTIVE']);
+    $cashier = marketUser('CASHIER', $branch);
+    $otherCashier = marketUser('CASHIER', $branch);
+
+    Sale::create([
+        'receipt_no' => 'RCPT-MINE',
+        'branch_id' => $branch->id,
+        'user_id' => $cashier->id,
+        'customer_name' => 'Mine Customer',
+        'subtotal' => 1000,
+        'tax' => 0,
+        'grand_total' => 1000,
+        'amount_paid' => 1000,
+        'payment_method' => 'CASH',
+        'payment_status' => 'PAID',
+        'sale_status' => Sale::STATUS_COMPLETED,
+    ]);
+
+    Sale::create([
+        'receipt_no' => 'RCPT-OTHER',
+        'branch_id' => $branch->id,
+        'user_id' => $otherCashier->id,
+        'customer_name' => 'Other Customer',
+        'subtotal' => 5000,
+        'tax' => 0,
+        'grand_total' => 5000,
+        'amount_paid' => 5000,
+        'payment_method' => 'CASH',
+        'payment_status' => 'PAID',
+        'sale_status' => Sale::STATUS_COMPLETED,
+    ]);
+
+    $this->actingAs($cashier)
+        ->get(route('sales.report.print'))
+        ->assertOk()
+        ->assertSee('MY SALES REPORT')
+        ->assertSee('RCPT-MINE')
+        ->assertDontSee('RCPT-OTHER');
+});
+
 it('collapses duplicate POS product cards for the same branch and product identity', function () {
     $branch = Branch::create(['name' => 'Main', 'code' => 'MAIN', 'status' => 'ACTIVE']);
     $cashier = marketUser('CASHIER', $branch);

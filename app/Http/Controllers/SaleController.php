@@ -42,145 +42,12 @@ class SaleController extends Controller
 
     public function index(Request $request)
     {
-        /*
-        |--------------------------------------------------------------------------
-        | FILTER + SEARCH
-        |--------------------------------------------------------------------------
-        */
-
-        $filter = $request->filter ?? 'all';
-
-        $search = $request->search ?? '';
-
-        /*
-        |--------------------------------------------------------------------------
-        | BASE QUERY
-        |--------------------------------------------------------------------------
-        */
-
-        $departmentAccess = app(DepartmentAccessService::class);
-
-        $selectedDepartmentId = $departmentAccess->selectedDepartmentId(
-            $request->user(),
-            $request->integer('department_id') ?: null
-        );
-
-        $departments = $departmentAccess->visibleDepartments($request->user());
-
-        $query = Sale::with('user', 'items.department');
-        app(BranchAccessService::class)->apply(
-            $query,
-            $request->user(),
-            $request->integer('branch_id') ?: null
-        );
-
-        if ($selectedDepartmentId) {
-            $query->whereHas('items', fn ($items) => $items->where('department_id', $selectedDepartmentId));
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | USER
-        |--------------------------------------------------------------------------
-        */
-
-        $user = auth()->user();
-
-        /*
-        |--------------------------------------------------------------------------
-        | CASHIER RESTRICTION
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-            $user->hasOperationalRole('CASHIER', 'WAITER', 'SERVER')
-            
-        ) {
-
-            $query->where(
-                'user_id',
-                $user->id
-            );
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | FILTERS
-        |--------------------------------------------------------------------------
-        */
-
-        if ($filter == 'daily') {
-
-            $query->whereDate(
-                'created_at',
-                today()
-            );
-        }
-
-        elseif ($filter == 'weekly') {
-
-            $query->whereBetween(
-                'created_at',
-                [
-                    now()->startOfWeek(),
-                    now()->endOfWeek()
-                ]
-            );
-        }
-
-        elseif ($filter == 'monthly') {
-
-            $query->whereMonth(
-                'created_at',
-                now()->month
-            )->whereYear(
-                'created_at',
-                now()->year
-            );
-        }
-
-        elseif ($filter == 'yearly') {
-
-            $query->whereYear(
-                'created_at',
-                now()->year
-            );
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | SEARCH
-        |--------------------------------------------------------------------------
-        */
-
-        if (!empty($search)) {
-
-            $query->where(function ($q) use ($search) {
-
-                $q->where(
-                    'receipt_no',
-                    'LIKE',
-                    '%' . $search . '%'
-                )
-
-                ->orWhere(
-                    'sale_status',
-                    'LIKE',
-                    '%' . $search . '%'
-                )
-
-                ->orWhereHas('user', function ($u) use ($search) {
-
-                    $u->where(
-                        'name',
-                        'LIKE',
-                        '%' . $search . '%'
-                    );
-
-                });
-
-            });
-        }
+        $context = $this->filteredSalesContext($request);
+        $query = $context['query'];
+        $filter = $context['filter'];
+        $search = $context['search'];
+        $selectedDepartmentId = $context['selectedDepartmentId'];
+        $departments = $context['departments'];
 
         /*
         |--------------------------------------------------------------------------
@@ -188,9 +55,10 @@ class SaleController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $sales = $query
+        $sales = (clone $query)
             ->latest()
-            ->paginate(10);
+            ->paginate(10)
+            ->withQueryString();
 
         /*
         |--------------------------------------------------------------------------
@@ -240,6 +108,149 @@ class SaleController extends Controller
                 'departments'
             )
         );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | PRINT FILTERED SALES REPORT
+    |--------------------------------------------------------------------------
+    */
+
+    public function printReport(Request $request)
+    {
+        $context = $this->filteredSalesContext($request);
+        $query = $context['query'];
+        $filter = $context['filter'];
+        $search = $context['search'];
+        $selectedDepartmentId = $context['selectedDepartmentId'];
+        $departments = $context['departments'];
+
+        $sales = (clone $query)
+            ->with([
+                'user',
+                'items.department',
+                'items.product.department',
+                'payments',
+                'customer',
+                'branch',
+            ])
+            ->latest()
+            ->get();
+
+        $grossSales = (clone $query)->sum('grand_total');
+        $refundedSales = Sale::refundedAmountFor($query);
+        $totalSales = (clone $query)->revenueBearing()->sum('grand_total');
+        $totalTransactions = (clone $query)->revenueBearing()->count();
+        $grossTransactions = (clone $query)->count();
+        $refundedTransactions = (clone $query)->refundedOnly()->count();
+
+        $paymentBreakdown = $sales
+            ->flatMap(function (Sale $sale) {
+                if ($sale->payments->isNotEmpty()) {
+                    return $sale->payments->map(fn ($payment) => [
+                        'method' => Sale::PAYMENT_METHOD_LABELS[Sale::normalizePaymentMethod($payment->method)] ?? $payment->method,
+                        'amount' => (float) $payment->amount,
+                    ]);
+                }
+
+                return [[
+                    'method' => $sale->paymentMethodLabel(),
+                    'amount' => (float) $sale->amount_paid ?: (float) $sale->grand_total,
+                ]];
+            })
+            ->groupBy('method')
+            ->map(fn ($rows) => $rows->sum('amount'))
+            ->sortKeys();
+
+        $selectedDepartment = $selectedDepartmentId
+            ? $departments->firstWhere('id', $selectedDepartmentId)
+            : null;
+
+        $selectedBranchId = $request->integer('branch_id') ?: null;
+        $branchLabel = $selectedBranchId
+            ? (\App\Models\Branch::whereKey($selectedBranchId)->value('name') ?? 'Selected Branch')
+            : ($request->user()->hasOperationalRole('ADMIN', 'ADMINISTRATOR') ? 'All Branches' : ($request->user()->branch?->name ?? 'Assigned Branch'));
+
+        $periodLabel = $this->salesPeriodLabel($filter);
+        $isPersonalReport = $request->user()->hasOperationalRole('CASHIER', 'WAITER', 'SERVER');
+
+        return view('sales.report-print', compact(
+            'sales',
+            'grossSales',
+            'refundedSales',
+            'totalSales',
+            'totalTransactions',
+            'grossTransactions',
+            'refundedTransactions',
+            'paymentBreakdown',
+            'filter',
+            'search',
+            'selectedDepartment',
+            'branchLabel',
+            'periodLabel',
+            'isPersonalReport'
+        ));
+    }
+
+    private function filteredSalesContext(Request $request): array
+    {
+        $filter = $request->filter ?? 'all';
+        $search = $request->search ?? '';
+        $departmentAccess = app(DepartmentAccessService::class);
+        $selectedDepartmentId = $departmentAccess->selectedDepartmentId(
+            $request->user(),
+            $request->integer('department_id') ?: null
+        );
+        $departments = $departmentAccess->visibleDepartments($request->user());
+
+        $query = Sale::with('user', 'items.department');
+        app(BranchAccessService::class)->apply(
+            $query,
+            $request->user(),
+            $request->integer('branch_id') ?: null
+        );
+
+        if ($selectedDepartmentId) {
+            $query->whereHas('items', fn ($items) => $items->where('department_id', $selectedDepartmentId));
+        }
+
+        if ($request->user()->hasOperationalRole('CASHIER', 'WAITER', 'SERVER')) {
+            $query->where('user_id', $request->user()->id);
+        }
+
+        if ($filter === 'daily') {
+            $query->whereDate('created_at', today());
+        } elseif ($filter === 'weekly') {
+            $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]);
+        } elseif ($filter === 'monthly') {
+            $query->whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year);
+        } elseif ($filter === 'yearly') {
+            $query->whereYear('created_at', now()->year);
+        }
+
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('receipt_no', 'LIKE', '%' . $search . '%')
+                    ->orWhere('sale_status', 'LIKE', '%' . $search . '%')
+                    ->orWhere('customer_name', 'LIKE', '%' . $search . '%')
+                    ->orWhereHas('user', fn ($u) => $u->where('name', 'LIKE', '%' . $search . '%')
+                        ->orWhere('username', 'LIKE', '%' . $search . '%'));
+            });
+        }
+
+        return compact('query', 'filter', 'search', 'selectedDepartmentId', 'departments');
+    }
+
+    private function salesPeriodLabel(string $filter): string
+    {
+        return match ($filter) {
+            'daily' => 'Today',
+            'weekly' => 'This Week',
+            'monthly' => 'This Month',
+            'yearly' => 'This Year',
+            default => 'All Time',
+        };
     }
 
     /*

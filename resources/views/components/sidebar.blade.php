@@ -44,11 +44,7 @@
         'KITCHEN_MANAGER',
         'KITCHEN_CHIEF',
         'BAR_MANAGER',
-        'BAR_CHIEF',
-        'BARTENDER',
-        'CASHIER',
-        'WAITER',
-        'SERVER'
+        'BAR_CHIEF'
     );
 
     $links = [
