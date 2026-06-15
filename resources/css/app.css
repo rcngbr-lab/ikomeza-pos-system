@@ -136,6 +136,96 @@
         scrollbar-width: thin;
     }
 
+    body.pos-kiosk-active {
+        overflow: hidden;
+    }
+
+    body.pos-kiosk-active main {
+        overflow: hidden;
+    }
+
+    body.pos-kiosk-active main > div {
+        height: 100vh;
+        padding: 0 !important;
+    }
+
+    .pos-screen.pos-kiosk {
+        display: flex;
+        height: 100vh;
+        max-width: none !important;
+        flex-direction: column;
+        gap: 0.5rem;
+        overflow: hidden;
+        padding: 0.5rem;
+        padding-bottom: 0.5rem !important;
+    }
+
+    .pos-screen.pos-kiosk > :not([hidden]) ~ :not([hidden]) {
+        margin-top: 0 !important;
+    }
+
+    .pos-screen.pos-kiosk .pos-page-header {
+        align-items: center;
+        flex-shrink: 0;
+        gap: 0.5rem;
+    }
+
+    .pos-screen.pos-kiosk .pos-page-header h1 {
+        margin-top: 0.1rem !important;
+        font-size: 1.35rem !important;
+        line-height: 1.05 !important;
+    }
+
+    .pos-screen.pos-kiosk .pos-page-header p {
+        margin-top: 0 !important;
+    }
+
+    .pos-screen.pos-kiosk .pos-workspace {
+        grid-template-columns: minmax(0, 1fr) 340px;
+        min-height: 0;
+        flex: 1;
+        gap: 0.5rem;
+    }
+
+    .pos-screen.pos-kiosk .pos-products-section {
+        min-height: 0;
+        overflow-y: auto;
+        padding-right: 0.15rem;
+    }
+
+    .pos-screen.pos-kiosk .pos-sticky-toolbar {
+        top: 0 !important;
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .pos-screen.pos-kiosk .pos-product-grid {
+        grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)) !important;
+        gap: 0.5rem;
+    }
+
+    .pos-screen.pos-kiosk .product-card {
+        height: 178px !important;
+    }
+
+    .pos-screen.pos-kiosk .pos-cart-panel-shell {
+        top: 0.5rem !important;
+        max-height: calc(100vh - 1rem) !important;
+        overflow-y: auto;
+    }
+
+    @media (min-width: 1536px) {
+        .pos-screen.pos-kiosk .pos-workspace {
+            grid-template-columns: minmax(0, 1fr) 360px;
+        }
+    }
+
+    @media (max-width: 1279px) {
+        .pos-screen.pos-kiosk .pos-workspace {
+            grid-template-columns: minmax(0, 1fr) !important;
+        }
+    }
+
     @media (max-width: 767px) {
         body {
             text-size-adjust: 100%;

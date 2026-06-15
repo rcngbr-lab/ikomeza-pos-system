@@ -2,7 +2,7 @@
     $isDrawer = ($cartPanelMode ?? 'desktop') === 'drawer';
 @endphp
 
-<div class="{{ $isDrawer ? 'max-h-[92vh] overflow-y-auto p-2.5' : 'sticky top-16 max-h-[calc(100vh-5rem)] overflow-y-auto' }}">
+<div class="pos-cart-panel-shell {{ $isDrawer ? 'max-h-[92vh] overflow-y-auto p-2.5' : 'sticky top-16 max-h-[calc(100vh-5rem)] overflow-y-auto' }}">
     <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
         <div class="border-b border-slate-100 p-3">
             <div class="flex items-start justify-between gap-4">

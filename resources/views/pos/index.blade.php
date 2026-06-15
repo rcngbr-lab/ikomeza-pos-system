@@ -267,6 +267,7 @@
 
 <div
     class="pos-screen mx-auto max-w-[1920px] space-y-3 pb-24 xl:pb-0"
+    :class="{ 'pos-kiosk': posKiosk }"
     x-data="posTerminal({
         total: @js($total),
         vatRate: @js($taxPreview['vat_rate'] ?? 0),
@@ -287,7 +288,7 @@
         },
     })"
 >
-    <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div class="pos-page-header flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
             <p class="text-xs font-black uppercase tracking-widest text-indigo-600">Cashier terminal</p>
             <h1 class="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">Point of Sale</h1>
@@ -296,7 +297,15 @@
             </p>
         </div>
 
-        <div class="grid grid-cols-3 gap-2 sm:flex">
+        <div class="grid grid-cols-2 gap-2 sm:flex">
+            <button
+                type="button"
+                class="rounded-xl bg-slate-950 px-3 py-2.5 text-center text-xs font-black text-white shadow-lg shadow-slate-950/15 transition hover:bg-slate-800"
+                @click="togglePosKiosk()"
+                x-text="posKiosk ? 'Exit Full' : 'Full Screen'"
+            >
+                Full Screen
+            </button>
             <a href="{{ route('shifts.current') }}" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-center text-xs font-black text-slate-700 shadow-sm transition hover:border-indigo-200 hover:text-indigo-700">
                 Shift
             </a>
@@ -334,8 +343,8 @@
     ></div>
 
     <div class="pos-workspace grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_390px]">
-        <section class="min-w-0 space-y-3">
-            <div class="sticky top-14 z-30 -mx-2 space-y-2 border-y border-slate-200 bg-slate-100/95 px-2 py-2 backdrop-blur sm:mx-0 sm:rounded-xl sm:border sm:bg-white/95 sm:p-2 sm:shadow-sm">
+        <section class="pos-products-section min-w-0 space-y-3">
+            <div class="pos-sticky-toolbar sticky top-14 z-30 -mx-2 space-y-2 border-y border-slate-200 bg-slate-100/95 px-2 py-2 backdrop-blur sm:mx-0 sm:rounded-xl sm:border sm:bg-white/95 sm:p-2 sm:shadow-sm">
                 <div class="grid gap-2 lg:grid-cols-[1fr_260px_auto]">
                     <input
                         id="productSearch"
