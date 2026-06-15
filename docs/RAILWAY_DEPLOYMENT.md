@@ -18,6 +18,8 @@ The startup script:
 6. Runs migrations.
 7. Serves Laravel on `0.0.0.0:$PORT`.
 
+If `APP_KEY` is missing, the startup script generates a temporary runtime key so the container can boot. This keeps the site accessible for emergency/demo recovery only. Set a fixed Railway `APP_KEY` variable for stable sessions and password-reset/security behavior.
+
 ## Required Production Variables
 
 For a real pilot or production deployment, attach Railway PostgreSQL or MySQL and set one of these groups:
@@ -66,6 +68,7 @@ This is only for temporary demo access. It is not safe for commercial production
 Check the deploy logs for:
 
 - Missing `APP_KEY`
+- A temporary APP_KEY warning on every deploy
 - PostgreSQL host pointing to `127.0.0.1`
 - Migration failures
 - Missing PHP extensions
