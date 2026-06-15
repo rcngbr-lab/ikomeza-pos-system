@@ -24,6 +24,18 @@ Artisan::command('pos:production-preflight', function () {
         return 1;
     }
 
+    if (in_array($connection, ['pgsql', 'mysql', 'mariadb'], true)) {
+        $database = config('database.connections.' . $connection);
+        $host = $database['host'] ?? null;
+        $url = $database['url'] ?? null;
+
+        if (blank($url) && in_array($host, ['127.0.0.1', 'localhost', null], true) && !filter_var(env('ALLOW_LOCAL_DB_HOST_PRODUCTION', false), FILTER_VALIDATE_BOOL)) {
+            $this->error('Production database points to localhost. Attach a managed database and set DATABASE_URL/PGHOST or DB_HOST.');
+
+            return 1;
+        }
+    }
+
     if (blank(config('app.key'))) {
         $this->error('APP_KEY is missing.');
 
