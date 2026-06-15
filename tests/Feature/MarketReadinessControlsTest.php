@@ -351,6 +351,29 @@ it('keeps manager audit log visibility inside the assigned branch', function () 
         ->assertDontSee('Other branch sale log');
 });
 
+it('blocks cashiers from audit logs', function () {
+    $branch = Branch::create(['name' => 'Main', 'code' => 'MAIN', 'status' => 'ACTIVE']);
+    $cashier = marketUser('CASHIER', $branch);
+    $log = AuditLog::create([
+        'user_id' => $cashier->id,
+        'branch_id' => $branch->id,
+        'action' => 'SALE_COMPLETED',
+        'module' => 'Sales',
+        'event' => 'SALE_COMPLETED',
+        'model' => 'Sale',
+        'description' => 'Cashier sale log',
+        'severity' => 'INFO',
+    ]);
+
+    $this->actingAs($cashier)
+        ->get(route('audit.logs'))
+        ->assertForbidden();
+
+    $this->actingAs($cashier)
+        ->get(route('audit.logs.show', $log))
+        ->assertForbidden();
+});
+
 it('allows a manager to update a product image from the adjust page', function () {
     Storage::fake('public');
 
