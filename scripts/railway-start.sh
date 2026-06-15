@@ -1,11 +1,11 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 echo "Starting IKOMEZA POS on Railway..."
 
-if [[ -z "${APP_KEY:-}" ]]; then
-    export APP_KEY
+if [ -z "${APP_KEY:-}" ]; then
     APP_KEY="$(php -r 'echo "base64:".base64_encode(random_bytes(32));')"
+    export APP_KEY
     echo "WARNING: APP_KEY was missing. Generated a temporary runtime key. Set a fixed APP_KEY variable in Railway for stable sessions."
 fi
 
@@ -13,21 +13,21 @@ php artisan config:clear --no-interaction
 php artisan view:clear --no-interaction
 
 has_managed_database=false
-if [[ -n "${DATABASE_URL:-}" || -n "${DATABASE_PRIVATE_URL:-}" || -n "${POSTGRES_URL:-}" || -n "${POSTGRES_HOST:-}" || -n "${PGHOST:-}" || -n "${MYSQLHOST:-}" || -n "${MYSQL_HOST:-}" || -n "${MYSQL_URL:-}" ]]; then
+if [ -n "${DATABASE_URL:-}" ] || [ -n "${DATABASE_PRIVATE_URL:-}" ] || [ -n "${POSTGRES_URL:-}" ] || [ -n "${POSTGRES_HOST:-}" ] || [ -n "${PGHOST:-}" ] || [ -n "${MYSQLHOST:-}" ] || [ -n "${MYSQL_HOST:-}" ] || [ -n "${MYSQL_URL:-}" ]; then
     has_managed_database=true
 fi
 
-if [[ "$has_managed_database" == "false" ]]; then
+if [ "$has_managed_database" = "false" ]; then
     db_connection="${DB_CONNECTION:-sqlite}"
     db_host="${DB_HOST:-}"
 
-    if [[ "$db_connection" != "sqlite" && ( -z "$db_host" || "$db_host" == "127.0.0.1" || "$db_host" == "localhost" ) ]]; then
+    if [ "$db_connection" != "sqlite" ] && { [ -z "$db_host" ] || [ "$db_host" = "127.0.0.1" ] || [ "$db_host" = "localhost" ]; }; then
         echo "No managed database variables found. Falling back to Railway runtime SQLite."
         export DB_CONNECTION=sqlite
     fi
 fi
 
-if [[ "${DB_CONNECTION:-sqlite}" == "sqlite" ]]; then
+if [ "${DB_CONNECTION:-sqlite}" = "sqlite" ]; then
     export DB_DATABASE="${DB_DATABASE:-/app/database/database.sqlite}"
     export ALLOW_SQLITE_PRODUCTION="${ALLOW_SQLITE_PRODUCTION:-true}"
     echo "WARNING: Railway is using SQLite at ${DB_DATABASE}. Attach PostgreSQL/MySQL for persistent production data."

@@ -9,4 +9,4 @@ cmds = [
 ]
 
 [start]
-cmd = "bash scripts/railway-start.sh"
+cmd = "sh scripts/railway-start.sh"

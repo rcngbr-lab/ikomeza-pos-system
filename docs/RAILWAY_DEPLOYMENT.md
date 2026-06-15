@@ -5,7 +5,7 @@
 Railway starts IKOMEZA POS through:
 
 ```bash
-bash scripts/railway-start.sh
+sh scripts/railway-start.sh
 ```
 
 The startup script:
