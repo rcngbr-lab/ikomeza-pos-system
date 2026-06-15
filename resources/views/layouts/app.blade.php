@@ -21,13 +21,26 @@
                 ? saved === 'collapsed'
                 : (@js(request()->routeIs('pos.*')) && window.matchMedia('(max-width: 1280px)').matches);
 
-            this.posKiosk = this.isPosRoute && localStorage.getItem('ikomeza.pos.kiosk') === 'enabled';
+            this.posKiosk = this.isPosRoute
+                && localStorage.getItem('ikomeza.pos.kiosk') === 'enabled'
+                && Boolean(document.fullscreenElement);
+
+            if (this.isPosRoute && !document.fullscreenElement) {
+                localStorage.setItem('ikomeza.pos.kiosk', 'disabled');
+            }
 
             document.addEventListener('fullscreenchange', () => {
                 if (this.isPosRoute && !document.fullscreenElement && this.posKiosk) {
                     this.posKiosk = false;
                     localStorage.setItem('ikomeza.pos.kiosk', 'disabled');
                 }
+
+                if (this.isPosRoute && document.fullscreenElement) {
+                    this.posKiosk = true;
+                    localStorage.setItem('ikomeza.pos.kiosk', 'enabled');
+                }
+
+                this.$nextTick(() => window.dispatchEvent(new Event('resize')));
             });
         },
         toggleSidebar() {
@@ -39,21 +52,27 @@
                 return;
             }
 
-            this.posKiosk = !this.posKiosk;
-            localStorage.setItem('ikomeza.pos.kiosk', this.posKiosk ? 'enabled' : 'disabled');
-
             try {
-                if (this.posKiosk && !document.fullscreenElement) {
+                if (!this.posKiosk && !document.fullscreenElement) {
                     await document.documentElement.requestFullscreen();
+                    this.posKiosk = true;
+                    localStorage.setItem('ikomeza.pos.kiosk', 'enabled');
+                    this.$nextTick(() => window.dispatchEvent(new Event('resize')));
+                    return;
                 }
 
-                if (!this.posKiosk && document.fullscreenElement) {
+                if (this.posKiosk && document.fullscreenElement) {
                     await document.exitFullscreen();
+                    return;
                 }
             } catch (error) {
-                this.posKiosk = true;
-                localStorage.setItem('ikomeza.pos.kiosk', 'enabled');
+                this.posKiosk = false;
+                localStorage.setItem('ikomeza.pos.kiosk', 'disabled');
             }
+
+            this.posKiosk = false;
+            localStorage.setItem('ikomeza.pos.kiosk', 'disabled');
+            this.$nextTick(() => window.dispatchEvent(new Event('resize')));
         }
     }"
     :class="{ 'pos-kiosk-active': isPosRoute && posKiosk }"

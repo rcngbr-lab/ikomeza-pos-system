@@ -46,7 +46,6 @@
     data-search="{{ $searchText }}"
     data-barcode="{{ strtolower($product->barcode ?? '') }}"
     x-show="productVisible($el)"
-    x-transition.opacity.duration.120ms
     @click.prevent="tapProduct($event, @js($productPayload))"
     @pointerdown="startLongPress(@js($productPayload))"
     @pointerup="cancelLongPress"
@@ -62,7 +61,7 @@
         aria-label="Add {{ $product->name }} to cart"
         {{ $isOut ? 'disabled' : '' }}
     >
-        <div class="flex h-[48%] min-h-[86px] items-center justify-center bg-white px-2 pt-2">
+        <div class="product-card-image flex h-[48%] min-h-[86px] items-center justify-center bg-white px-2 pt-2">
             @if($imageSource)
                 <img
                     src="{{ $imageSource }}"
@@ -79,20 +78,20 @@
             @endif
         </div>
 
-        <div class="flex min-h-0 flex-1 flex-col px-2.5 pb-2.5 pt-2">
+        <div class="product-card-body flex min-h-0 flex-1 flex-col px-2.5 pb-2.5 pt-2">
             <div class="min-w-0 pr-11">
-                <p class="line-clamp-2 text-[13px] font-black leading-4 text-slate-950 sm:text-sm">
+                <p class="product-card-name line-clamp-2 text-[13px] font-black leading-4 text-slate-950 sm:text-sm">
                     {{ $product->name }}
                 </p>
-                <p class="mt-1 text-lg font-black leading-none text-slate-950 sm:text-xl">
+                <p class="product-card-price mt-1 text-lg font-black leading-none text-slate-950 sm:text-xl">
                     {{ number_format($product->selling_price) }}
                 </p>
-                <p class="mt-0.5 truncate text-[10px] font-black uppercase tracking-wide text-slate-500">
+                <p class="product-card-unit mt-0.5 truncate text-[10px] font-black uppercase tracking-wide text-slate-500">
                     RWF / {{ $product->unit ?: 'item' }}
                 </p>
             </div>
 
-            <div class="mt-auto flex min-w-0 items-center justify-between gap-2 pr-11">
+            <div class="product-card-meta mt-auto flex min-w-0 items-center justify-between gap-2 pr-11">
                 <span class="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-slate-50 px-2 py-1 text-[10px] font-black text-slate-600">
                     <span class="h-2 w-2 shrink-0 rounded-full {{ $stockTone === 'emerald' ? 'bg-emerald-500' : ($stockTone === 'amber' ? 'bg-amber-500' : 'bg-rose-500') }}"></span>
                     <span class="truncate">{{ $stockLabel }}</span>
@@ -105,7 +104,7 @@
         </div>
 
         <span
-            class="absolute bottom-2 right-2 flex h-11 w-11 items-center justify-center rounded-xl text-xl font-black text-white shadow-lg transition duration-150 group-hover:scale-105 sm:h-10 sm:w-10 {{ $isOut ? 'bg-slate-300 shadow-none' : 'bg-indigo-600 shadow-indigo-600/25 group-hover:bg-indigo-700' }}"
+            class="product-card-add absolute bottom-2 right-2 flex h-11 w-11 items-center justify-center rounded-xl text-xl font-black text-white shadow-lg transition duration-150 group-hover:scale-105 sm:h-10 sm:w-10 {{ $isOut ? 'bg-slate-300 shadow-none' : 'bg-indigo-600 shadow-indigo-600/25 group-hover:bg-indigo-700' }}"
             aria-hidden="true"
         >
             <span x-show="addingProductId !== {{ $product->id }}">+</span>

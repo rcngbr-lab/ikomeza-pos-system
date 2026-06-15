@@ -297,7 +297,7 @@
             </p>
         </div>
 
-        <div class="grid grid-cols-2 gap-2 sm:flex">
+        <div class="pos-page-actions grid grid-cols-2 gap-2 sm:flex">
             <button
                 type="button"
                 class="rounded-xl bg-slate-950 px-3 py-2.5 text-center text-xs font-black text-white shadow-lg shadow-slate-950/15 transition hover:bg-slate-800"
