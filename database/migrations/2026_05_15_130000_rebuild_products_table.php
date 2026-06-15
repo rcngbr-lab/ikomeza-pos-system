@@ -9,13 +9,19 @@ return new class extends Migration
 {
     public function up(): void
     {
+        $isSqlite = DB::getDriverName() === 'sqlite';
+
         /*
         |--------------------------------------------------------------------------
         | DISABLE FOREIGN KEYS
         |--------------------------------------------------------------------------
         */
 
-        DB::statement('PRAGMA foreign_keys=OFF');
+        Schema::disableForeignKeyConstraints();
+
+        if ($isSqlite) {
+            DB::statement('PRAGMA foreign_keys=OFF');
+        }
 
         /*
         |--------------------------------------------------------------------------
@@ -27,7 +33,7 @@ return new class extends Migration
             Schema::hasTable('sale_items_old')
             && Schema::hasTable('sale_items')
         ) {
-            Schema::drop('sale_items');
+            Schema::drop('sale_items_old');
         }
 
         if (
@@ -161,7 +167,11 @@ return new class extends Migration
         |--------------------------------------------------------------------------
         */
 
-        DB::statement('PRAGMA foreign_keys=ON');
+        if ($isSqlite) {
+            DB::statement('PRAGMA foreign_keys=ON');
+        }
+
+        Schema::enableForeignKeyConstraints();
     }
 
     public function down(): void
