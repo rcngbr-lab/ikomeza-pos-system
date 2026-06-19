@@ -4,10 +4,25 @@ set -eu
 echo "Starting FRONTIER POS on Railway..."
 
 if [ -z "${APP_KEY:-}" ]; then
-    APP_KEY="$(php -r 'echo "base64:".base64_encode(random_bytes(32));')"
-    export APP_KEY
-    echo "WARNING: APP_KEY was missing. Generated a temporary runtime key. Set a fixed APP_KEY variable in Railway for stable sessions."
+    echo "ERROR: APP_KEY is missing. Set one fixed APP_KEY in Railway Variables."
+    echo "Generate locally with: php artisan key:generate --show"
+    echo "A changing APP_KEY breaks sessions and causes 419 Page Expired errors."
+    exit 1
 fi
+
+if [ -z "${APP_URL:-}" ] && [ -n "${RAILWAY_PUBLIC_DOMAIN:-}" ]; then
+    export APP_URL="https://${RAILWAY_PUBLIC_DOMAIN}"
+fi
+
+if [ -n "${APP_URL:-}" ] && printf '%s' "$APP_URL" | grep -q '^https://'; then
+    export SESSION_SECURE_COOKIE="${SESSION_SECURE_COOKIE:-true}"
+fi
+
+if [ "${SESSION_DOMAIN:-}" = "null" ] || [ "${SESSION_DOMAIN:-}" = "NULL" ]; then
+    unset SESSION_DOMAIN
+fi
+
+export SESSION_SAME_SITE="${SESSION_SAME_SITE:-lax}"
 
 php artisan config:clear --no-interaction
 php artisan view:clear --no-interaction

@@ -2,15 +2,47 @@
 
 use Illuminate\Support\Str;
 
-$sessionDomain = env('SESSION_DOMAIN');
-$sessionDomain = is_string($sessionDomain) && in_array(strtolower(trim($sessionDomain)), ['', 'null'], true)
-    ? null
-    : $sessionDomain;
+$normalizeSessionDomain = static function (mixed $value): ?string {
+    if (!is_string($value)) {
+        return null;
+    }
+
+    $value = trim($value);
+
+    if ($value === '' || in_array(strtolower($value), ['null', 'false'], true)) {
+        return null;
+    }
+
+    if (str_contains($value, '://')) {
+        $value = (string) parse_url($value, PHP_URL_HOST);
+    }
+
+    $value = preg_replace('/:\d+$/', '', $value) ?: '';
+    $value = trim($value, '.');
+
+    if ($value === '' || in_array($value, ['localhost', '127.0.0.1', '::1'], true)) {
+        return null;
+    }
+
+    return $value;
+};
+
+$sessionDomain = $normalizeSessionDomain(env('SESSION_DOMAIN'));
 
 $sameSite = env('SESSION_SAME_SITE', 'lax');
 $sameSite = is_string($sameSite) && in_array(strtolower(trim($sameSite)), ['', 'null'], true)
     ? null
-    : $sameSite;
+    : strtolower((string) $sameSite);
+
+$secureCookie = env('SESSION_SECURE_COOKIE');
+$secureCookie = is_string($secureCookie) ? strtolower(trim($secureCookie)) : $secureCookie;
+
+if ($secureCookie === null || $secureCookie === '' || $secureCookie === 'null' || $secureCookie === 'auto') {
+    $secureCookie = env('APP_ENV') === 'production'
+        || str_starts_with(strtolower((string) env('APP_URL', '')), 'https://');
+} else {
+    $secureCookie = filter_var($secureCookie, FILTER_VALIDATE_BOOLEAN);
+}
 
 return [
 
@@ -179,7 +211,7 @@ return [
     |
     */
 
-    'secure' => filter_var(env('SESSION_SECURE_COOKIE', false), FILTER_VALIDATE_BOOLEAN),
+    'secure' => $secureCookie,
 
     /*
     |--------------------------------------------------------------------------
