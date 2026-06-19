@@ -44,11 +44,14 @@ class AppServiceProvider extends ServiceProvider
 
         $appUrl = rtrim((string) config('app.url'), '/');
 
-        if ($appUrl !== '' && $appUrl !== 'http://localhost') {
+        $shouldForceRootUrl = $this->app->environment('production')
+            || str_starts_with(strtolower($appUrl), 'https://');
+
+        if ($shouldForceRootUrl && $appUrl !== '' && $appUrl !== 'http://localhost') {
             URL::forceRootUrl($appUrl);
         }
 
-        if ($this->app->environment('production') || str_starts_with($appUrl, 'https://')) {
+        if ($this->app->environment('production') || str_starts_with(strtolower($appUrl), 'https://')) {
             URL::forceScheme('https');
         }
 

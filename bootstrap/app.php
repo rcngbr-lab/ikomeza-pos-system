@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Session\TokenMismatchException;
 
 return Application::configure(
     basePath: dirname(__DIR__)
@@ -41,6 +42,18 @@ return Application::configure(
 
 
 ->withExceptions(function (Exceptions $exceptions): void {
+
+    $exceptions->render(function (TokenMismatchException $exception, $request) {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Your session expired. Please refresh and try again.',
+            ], 419);
+        }
+
+        return redirect()
+            ->route('login')
+            ->with('status', 'Your session expired. Please log in again.');
+    });
 
     $exceptions->report(function (Throwable $exception) {
         try {
