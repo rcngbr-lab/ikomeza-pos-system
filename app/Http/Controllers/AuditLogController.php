@@ -514,7 +514,7 @@ class AuditLogController extends Controller
     private function pdfResponse(Collection $logs, Request $request): Response
     {
         $lines = [
-            'IKOMEZA POS AUDIT LOG REPORT',
+            'FRONTIER POS AUDIT LOG REPORT',
             'Generated: ' . now()->format('Y-m-d H:i'),
             'Filters: ' . json_encode($request->query()),
             '',

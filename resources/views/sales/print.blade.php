@@ -214,7 +214,7 @@
         <div class="company-info">
 
             <div class="company-name">
-                AGNES BAR
+                FRONTIER SHOP
             </div>
 
             <div class="small">
@@ -226,7 +226,7 @@
             </div>
 
             <div class="small">
-                Email: info@agnesbar.com
+                Email: info@frontiershop.rw
             </div>
 
         </div>
@@ -466,7 +466,7 @@
         <br><br>
 
         Email:
-        info@agnesbar.com
+        info@frontiershop.rw
 
         <br>
 

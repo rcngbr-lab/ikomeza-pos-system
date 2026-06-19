@@ -1,6 +1,6 @@
 # Backup Guide
 
-IKOMEZA POS includes a logical backup command that writes a compressed database dump, optional public storage archive, manifest, hashes, and a `backup_runs` log record.
+FRONTIER POS includes a logical backup command that writes a compressed database dump, optional public storage archive, manifest, hashes, and a `backup_runs` log record.
 
 ## Manual Backup
 

@@ -1,14 +1,14 @@
 @echo off
 setlocal enabledelayedexpansion
 
-title IKOMEZA POS SYSTEM - LAN MODE
+title FRONTIER POS SYSTEM - LAN MODE
 color 0A
 
 set "APP_DIR=C:\Users\IT BASE\bar-pos-system"
 set "PORT=8000"
 
 echo =========================================
-echo        STARTING IKOMEZA POS - LAN
+echo        STARTING FRONTIER POS - LAN
 echo =========================================
 
 cd /d "%APP_DIR%"
@@ -45,17 +45,17 @@ if errorlevel 1 (
 
 echo.
 echo Starting Laravel LAN server on 0.0.0.0:%PORT%...
-start "IKOMEZA POS LAN SERVER" /D "%APP_DIR%" cmd /k "set APP_URL=http://%LAN_IP%:%PORT%&& php artisan serve --host=0.0.0.0 --port=%PORT%"
+start "FRONTIER POS LAN SERVER" /D "%APP_DIR%" cmd /k "set APP_URL=http://%LAN_IP%:%PORT%&& php artisan serve --host=0.0.0.0 --port=%PORT%"
 
 timeout /t 4 >nul
 
 echo.
 echo Starting Electron app on this computer...
-start "IKOMEZA POS DESKTOP" /D "%APP_DIR%" cmd /k "npx electron ."
+start "FRONTIER POS DESKTOP" /D "%APP_DIR%" cmd /k "npx electron ."
 
 echo.
 echo =========================================
-echo IKOMEZA POS IS READY ON YOUR NETWORK
+echo FRONTIER POS IS READY ON YOUR NETWORK
 echo =========================================
 echo.
 echo Open on this computer:

@@ -198,7 +198,7 @@
     <main class="sheet">
         <header class="report-header">
             <div>
-                <div class="brand">IKOMEZA POS</div>
+                <div class="brand">FRONTIER POS</div>
                 <div class="title">{{ $reportTitle ?? 'Inventory Stock History Report' }}</div>
             </div>
 
@@ -270,7 +270,7 @@
         </table>
 
         <footer class="footer">
-            <span>IKOMEZA POS SYSTEM</span>
+            <span>FRONTIER POS SYSTEM</span>
             <span>Authorized inventory report</span>
         </footer>
     </main>

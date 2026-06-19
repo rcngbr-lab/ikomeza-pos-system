@@ -15,7 +15,7 @@ class AdminAccountService
 
         $this->ensureUser(
             $this->envValue('ADMIN_USERNAME', 'admin'),
-            $this->envValue('ADMIN_EMAIL', 'admin@agnesbar.com'),
+            $this->envValue('ADMIN_EMAIL', 'admin@frontiershop.rw'),
             $this->envValue('ADMIN_NAME', 'Administrator'),
             $this->envValue('ADMIN_PASSWORD', ''),
             $adminRole
@@ -77,7 +77,7 @@ class AdminAccountService
         $payload = [
             'name' => $name,
             'username' => $username,
-            'email' => $emailOwner ? ($user->email ?: $username . '@ikomeza.local') : $email,
+            'email' => $emailOwner ? ($user->email ?: $username . '@frontier.local') : $email,
             'email_verified_at' => now(),
             'role' => 'ADMIN',
             'role_id' => $adminRole->id,

@@ -1,11 +1,11 @@
-# IKOMEZA POS Ultimate Enterprise Audit
+# FRONTIER POS Ultimate Enterprise Audit
 
 Audit date: 2026-06-15  
 Codebase: Laravel 13, PHP 8.5 target, Blade, Tailwind CSS, Alpine.js, SQLite local, PostgreSQL/MySQL intended production.
 
 ## 1. Executive Summary
 
-IKOMEZA POS is beyond a prototype for single-branch cashier, stock, shift, refund, audit, and restaurant/bar pilot use. It is not yet enterprise-ready for 100 branches, 2,000 users, or 1,000,000 transactions.
+FRONTIER POS is beyond a prototype for single-branch cashier, stock, shift, refund, audit, and restaurant/bar pilot use. It is not yet enterprise-ready for 100 branches, 2,000 users, or 1,000,000 transactions.
 
 Verdict:
 
@@ -340,7 +340,7 @@ Scalability score: 41/100.
 
 ## 17. Competitive Comparison
 
-| System | IKOMEZA position |
+| System | FRONTIER position |
 |---|---|
 | Loyverse | Worse polish/offline maturity; better local customization potential |
 | Square POS | Worse ecosystem/payment/device maturity; better Rwanda-specific control potential |

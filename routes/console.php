@@ -1,10 +1,16 @@
 <?php
 
+use App\Models\User;
 use App\Services\BackupService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schedule;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -98,7 +104,81 @@ Artisan::command('pos:production-preflight {--warn-only}', function () {
         : $this->info('Production preflight passed.');
 
     return 0;
-})->purpose('Block unsafe production startup settings before serving IKOMEZA POS');
+})->purpose('Block unsafe production startup settings before serving FRONTIER POS');
+
+Artisan::command('frontier:user-update {login} {--username=} {--password=} {--email=} {--name=} {--force}', function () {
+    if (app()->environment('production') && !$this->option('force')) {
+        $this->error('Production user updates are blocked without --force. Run this only during a planned admin recovery window.');
+
+        return 1;
+    }
+
+    $login = (string) $this->argument('login');
+    $user = User::query()
+        ->where('username', $login)
+        ->orWhere('email', $login)
+        ->orWhere('id', ctype_digit($login) ? (int) $login : 0)
+        ->first();
+
+    if (!$user) {
+        $this->error('User not found by username, email, or ID: ' . $login);
+
+        return 1;
+    }
+
+    $payload = [
+        'username' => $this->option('username') ? Str::lower(trim((string) $this->option('username'))) : null,
+        'password' => $this->option('password'),
+        'email' => $this->option('email') ?: null,
+        'name' => $this->option('name') ?: null,
+    ];
+
+    $validator = Validator::make($payload, [
+        'username' => [
+            'nullable',
+            'string',
+            'min:3',
+            'max:80',
+            'regex:/^[a-z0-9._-]+$/',
+            Rule::unique('users', 'username')->ignore($user->id),
+        ],
+        'password' => ['nullable', Password::min(10)->mixedCase()->numbers()],
+        'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+        'name' => ['nullable', 'string', 'max:255'],
+    ]);
+
+    if ($validator->fails()) {
+        foreach ($validator->errors()->all() as $error) {
+            $this->error($error);
+        }
+
+        return 1;
+    }
+
+    $changes = [];
+
+    foreach (['username', 'email', 'name'] as $field) {
+        if (filled($payload[$field])) {
+            $changes[$field] = $payload[$field];
+        }
+    }
+
+    if (filled($payload['password'])) {
+        $changes['password'] = Hash::make((string) $payload['password']);
+    }
+
+    if ($changes === []) {
+        $this->warn('No changes requested. Use --username, --password, --email, or --name.');
+
+        return 0;
+    }
+
+    $user->forceFill($changes)->save();
+
+    $this->info('Updated user #' . $user->id . ' (' . $user->username . ').');
+
+    return 0;
+})->purpose('Safely update a local Frontier POS username, password, email, or display name');
 
 Artisan::command('pos:backup {--name=} {--created-by=}', function (BackupService $backupService) {
     $run = $backupService->create(
@@ -161,5 +241,5 @@ Schedule::command('pos:backup')
     ->dailyAt(env('BACKUP_DAILY_AT', '02:00'))
     ->withoutOverlapping()
     ->onFailure(function () {
-        logger()->error('Scheduled IKOMEZA POS backup failed.');
+        logger()->error('Scheduled FRONTIER POS backup failed.');
     });

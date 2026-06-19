@@ -4,31 +4,26 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class CustomerLedgerEntry extends Model
+class CreditPayment extends Model
 {
     protected $fillable = [
+        'payment_number',
         'customer_id',
         'credit_account_id',
         'branch_id',
-        'sale_id',
-        'entry_type',
-        'debit',
-        'credit',
-        'balance_after',
-        'transaction_date',
-        'due_date',
+        'amount',
         'payment_method',
         'reference',
-        'description',
-        'created_by',
+        'received_by',
+        'received_at',
+        'allocation_method',
+        'status',
+        'notes',
     ];
 
     protected $casts = [
-        'debit' => 'decimal:2',
-        'credit' => 'decimal:2',
-        'balance_after' => 'decimal:2',
-        'transaction_date' => 'date',
-        'due_date' => 'date',
+        'amount' => 'decimal:2',
+        'received_at' => 'datetime',
     ];
 
     public function customer()

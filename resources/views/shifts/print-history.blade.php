@@ -29,7 +29,7 @@
 <body onload="window.print()">
     <div class="header">
         <div>
-            <div class="brand">IKOMEZA POS</div>
+            <div class="brand">FRONTIER POS</div>
             <h1>Shift History Report</h1>
             <p class="muted">Period: {{ $periodLabel }} | Generated: {{ now()->format('Y-m-d H:i') }}</p>
         </div>
@@ -99,7 +99,7 @@
 
     <div class="footer">
         <span>Prepared by: {{ auth()->user()->name }}</span>
-        <span>IKOMEZA POS Shift Accountability Report</span>
+        <span>FRONTIER POS Shift Accountability Report</span>
     </div>
 </body>
 </html>

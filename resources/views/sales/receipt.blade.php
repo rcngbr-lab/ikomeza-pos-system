@@ -222,7 +222,7 @@ function printReceipt()
         <div class="company">
 
             <h1>
-                AGNES BAR
+                FRONTIER SHOP
             </h1>
 
             <div class="small">
@@ -234,7 +234,7 @@ function printReceipt()
             </div>
 
             <div class="small">
-                info@agnesbar.com
+                info@frontiershop.rw
             </div>
 
         </div>
@@ -494,7 +494,7 @@ function printReceipt()
         <br><br>
 
         Email:
-        info@agnesbar.com
+        info@frontiershop.rw
 
         <br>
 

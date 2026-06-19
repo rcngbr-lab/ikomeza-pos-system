@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
-use App\Models\CustomerLedgerEntry;
 use App\Models\Sale;
+use App\Services\AccountsReceivableService;
 use App\Services\AuditLogService;
 use App\Services\BranchAccessService;
 use Illuminate\Http\Request;
@@ -19,10 +19,13 @@ class CustomerController extends Controller
 
         $customers = $query
             ->when($request->filled('search'), function ($query) use ($request) {
-                $query->where('name', 'like', '%' . $request->search . '%')
-                    ->orWhere('phone', 'like', '%' . $request->search . '%')
-                    ->orWhere('customer_code', 'like', '%' . $request->search . '%');
+                $query->where(function ($query) use ($request) {
+                    $query->where('name', 'like', '%' . $request->search . '%')
+                        ->orWhere('phone', 'like', '%' . $request->search . '%')
+                        ->orWhere('customer_code', 'like', '%' . $request->search . '%');
+                });
             })
+            ->with('creditAccount')
             ->latest()
             ->paginate(15)
             ->withQueryString();
@@ -37,7 +40,12 @@ class CustomerController extends Controller
             'phone' => ['nullable', 'string', 'max:80'],
             'email' => ['nullable', 'email', 'max:255'],
             'tin' => ['nullable', 'string', 'max:120'],
+            'category' => ['nullable', 'in:WALK_IN,REGISTERED,VIP,EMPLOYEE,CORPORATE'],
+            'national_id' => ['nullable', 'string', 'max:80'],
+            'company_registration_number' => ['nullable', 'string', 'max:120'],
             'credit_limit' => ['nullable', 'numeric', 'min:0'],
+            'credit_period_days' => ['nullable', 'integer', 'min:0', 'max:365'],
+            'risk_level' => ['nullable', 'in:LOW,MEDIUM,HIGH,CRITICAL'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -51,9 +59,14 @@ class CustomerController extends Controller
         $customer = Customer::create(array_merge($validated, [
             'customer_code' => 'CUS-' . now()->format('Ymd-His') . '-' . random_int(100, 999),
             'branch_id' => $request->user()->branch_id,
+            'category' => $validated['category'] ?? 'WALK_IN',
             'credit_limit' => $validated['credit_limit'] ?? 0,
+            'credit_period_days' => $validated['credit_period_days'] ?? 30,
+            'risk_level' => $validated['risk_level'] ?? 'LOW',
             'status' => Customer::STATUS_ACTIVE,
         ]));
+
+        app(AccountsReceivableService::class)->ensureAccount($customer, $request->user());
 
         AuditLogService::record([
             'action' => 'CUSTOMER_CREATED',
@@ -73,11 +86,15 @@ class CustomerController extends Controller
 
         $validated = $request->validate([
             'credit_limit' => ['required', 'numeric', 'min:0'],
-            'status' => ['required', 'in:ACTIVE,INACTIVE'],
+            'credit_period_days' => ['nullable', 'integer', 'min:0', 'max:365'],
+            'category' => ['nullable', 'in:WALK_IN,REGISTERED,VIP,EMPLOYEE,CORPORATE'],
+            'risk_level' => ['nullable', 'in:LOW,MEDIUM,HIGH,CRITICAL'],
+            'status' => ['required', 'in:ACTIVE,INACTIVE,SUSPENDED,BLOCKED,CLOSED'],
+            'blocked_reason' => ['nullable', 'string', 'max:500'],
         ]);
 
         $old = $customer->only(['credit_limit', 'status']);
-        $customer->update($validated);
+        app(AccountsReceivableService::class)->updateCreditProfile($customer, $validated, $request->user());
 
         AuditLogService::record([
             'action' => 'CUSTOMER_UPDATED',
@@ -107,26 +124,17 @@ class CustomerController extends Controller
             return back()->with('error', 'Customer account payment cannot use credit as tender.');
         }
 
-        $amount = min((float) $validated['amount'], (float) $customer->balance);
-
-        if ($amount <= 0) {
-            return back()->with('error', 'Customer has no outstanding balance.');
+        try {
+            $payment = app(AccountsReceivableService::class)->receivePayment(
+                customer: $customer,
+                amount: (float) $validated['amount'],
+                method: $validated['payment_method'],
+                reference: $validated['reference'] ?? null,
+                user: $request->user()
+            );
+        } catch (\RuntimeException $exception) {
+            return back()->with('error', $exception->getMessage());
         }
-
-        $customer->decrement('balance', $amount);
-        $customer->refresh();
-
-        CustomerLedgerEntry::create([
-            'customer_id' => $customer->id,
-            'entry_type' => 'PAYMENT_RECEIVED',
-            'debit' => 0,
-            'credit' => $amount,
-            'balance_after' => $customer->balance,
-            'payment_method' => Sale::normalizePaymentMethod($validated['payment_method']),
-            'reference' => $validated['reference'] ?? null,
-            'description' => 'Customer account payment',
-            'created_by' => $request->user()->id,
-        ]);
 
         AuditLogService::record([
             'action' => 'CUSTOMER_PAYMENT_RECEIVED',
@@ -134,7 +142,7 @@ class CustomerController extends Controller
             'model' => $customer,
             'reference' => $customer->customer_code,
             'description' => 'Received customer account payment from ' . $customer->name,
-            'amount' => $amount,
+            'amount' => $payment->amount,
             'severity' => 'INFO',
         ]);
 

@@ -111,7 +111,7 @@
         <input
             type="email"
             name="email"
-            value="{{ old('email', isset($user) && !str_ends_with(strtolower((string) $user->email), '@ikomeza.local') ? $user->email : '') }}"
+            value="{{ old('email', isset($user) && !str_ends_with(strtolower((string) $user->email), '@frontier.local') ? $user->email : '') }}"
             class="w-full h-12 px-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             placeholder="staff@example.com"
         >

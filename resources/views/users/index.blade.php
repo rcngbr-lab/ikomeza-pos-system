@@ -40,7 +40,7 @@
                             <td>
                                 <p class="font-black text-slate-950">{{ $user->name }}</p>
                                 <p class="text-[11px] text-slate-500">
-                                    {{ !str_ends_with(strtolower((string) $user->email), '@ikomeza.local') ? $user->email : 'No contact email' }}
+                                    {{ !str_ends_with(strtolower((string) $user->email), '@frontier.local') ? $user->email : 'No contact email' }}
                                 </p>
                             </td>
                             <td><span class="dense-badge bg-indigo-100 text-indigo-700">{{ $user->username ?? '-' }}</span></td>

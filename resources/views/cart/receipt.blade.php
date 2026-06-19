@@ -131,7 +131,7 @@
 
         <h2>
 
-            IKOMEZA BAR POS
+            FRONTIER POS
 
         </h2>
 
@@ -202,7 +202,7 @@
 
                     {{ $item->quantity }}
 
-                    ×
+                    Ã—
 
                     {{ number_format($item->price) }}
 

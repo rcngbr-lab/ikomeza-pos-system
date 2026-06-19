@@ -110,6 +110,7 @@
 
     if ($user->hasOperationalRole('ADMIN', 'ADMINISTRATOR', 'MANAGER')) {
         $links = array_merge($links, [
+            ['label' => 'Credit Control', 'route' => 'receivables.index', 'active' => 'receivables.*', 'mark' => 'AR'],
             ['label' => 'Refunds', 'route' => 'refunds.index', 'mark' => 'RF'],
             ['label' => 'Users', 'route' => 'users.index', 'mark' => 'US'],
         ]);
@@ -134,8 +135,8 @@
             Enterprise POS
         </p>
         <h1 class="text-xl font-black tracking-tight text-white" :class="sidebarCollapsed ? 'mt-0 text-base' : 'mt-1'">
-            <span x-show="!sidebarCollapsed">IKOMEZA</span>
-            <span x-show="sidebarCollapsed">IK</span>
+            <span x-show="!sidebarCollapsed">FRONTIER</span>
+            <span x-show="sidebarCollapsed">FR</span>
         </h1>
     </div>
 

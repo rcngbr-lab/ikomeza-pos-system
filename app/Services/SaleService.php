@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Product;
 use App\Models\Customer;
-use App\Models\CustomerLedgerEntry;
 use App\Models\DiscountApproval;
 use App\Models\Payment;
 use App\Models\Recipe;
@@ -108,11 +107,7 @@ class SaleService
             }
 
             if ($customer && $creditDue > 0) {
-                $newBalance = (float) $customer->balance + $creditDue;
-
-                if ((float) $customer->credit_limit > 0 && $newBalance > (float) $customer->credit_limit) {
-                    throw new \Exception('Customer credit limit exceeded.');
-                }
+                app(AccountsReceivableService::class)->validateCreditSale($customer, $creditDue, $user);
             }
 
             $table = $tableId ? RestaurantTable::find($tableId) : null;
@@ -140,7 +135,7 @@ class SaleService
                 'amount_paid' => min($paidTotal, $grandTotal),
                 'change_amount' => $changeAmount,
                 'payment_method' => $payments[0]['method'] ?? $paymentMethod,
-                'payment_status' => $creditDue > 0 ? ($paidTotal > 0 ? 'PARTIAL' : 'CREDIT') : 'PAID',
+                'payment_status' => $creditDue > 0 ? 'PARTIAL' : 'PAID',
                 'credit_due' => $creditDue,
                 'sale_status' => 'COMPLETED',
                 'notes' => $notes,
@@ -196,20 +191,7 @@ class SaleService
             }
 
             if ($customer && $creditDue > 0) {
-                $customer->increment('balance', $creditDue);
-                $customer->refresh();
-
-                CustomerLedgerEntry::create([
-                    'customer_id' => $customer->id,
-                    'sale_id' => $sale->id,
-                    'entry_type' => 'CREDIT_SALE',
-                    'debit' => $creditDue,
-                    'credit' => 0,
-                    'balance_after' => $customer->balance,
-                    'reference' => $sale->receipt_no,
-                    'description' => 'Credit sale ' . $sale->receipt_no,
-                    'created_by' => $user->id,
-                ]);
+                app(AccountsReceivableService::class)->postCreditSale($sale, $customer, $creditDue, $user);
             }
 
             if ($table) {

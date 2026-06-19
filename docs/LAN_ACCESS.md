@@ -1,6 +1,6 @@
-# IKOMEZA POS LAN Access
+# FRONTIER POS LAN Access
 
-Use this when IKOMEZA POS must be opened by phones, tablets, or other computers on the same local network.
+Use this when FRONTIER POS must be opened by phones, tablets, or other computers on the same local network.
 
 ## Start The System
 
@@ -40,7 +40,7 @@ If another device cannot open the Network URL:
 PowerShell option for administrators:
 
 ```powershell
-New-NetFirewallRule -DisplayName "IKOMEZA POS LAN 8000" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow
+New-NetFirewallRule -DisplayName "FRONTIER POS LAN 8000" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow
 ```
 
 ## Recommended Local Network Setup
@@ -58,6 +58,6 @@ http://192.168.1.50:8000
 
 Close the opened command windows:
 
-- `IKOMEZA POS LAN SERVER`
-- `IKOMEZA POS DESKTOP`
+- `FRONTIER POS LAN SERVER`
+- `FRONTIER POS DESKTOP`
 

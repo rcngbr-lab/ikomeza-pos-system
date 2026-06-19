@@ -215,6 +215,14 @@
             'show' => $canOperate,
         ],
         [
+            'label' => 'Credit',
+            'route' => 'receivables.index',
+            'active' => 'receivables.*',
+            'icon' => 'credit',
+            'group' => 'Control',
+            'show' => $canManageStaff,
+        ],
+        [
             'label' => 'My Report',
             'route' => 'reports.my',
             'active' => 'reports.my',
@@ -300,6 +308,7 @@
             'chart' => '<path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5"/><path d="M12 16V8"/><path d="M16 16v-3"/>',
             'file' => '<path d="M14 3H6v18h12V7l-4-4Z"/><path d="M14 3v4h4"/><path d="M9 13h6"/><path d="M9 17h4"/>',
             'refund' => '<path d="M9 14 5 10l4-4"/><path d="M5 10h10a4 4 0 0 1 0 8h-2"/>',
+            'credit' => '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18"/><path d="M7 15h4"/><path d="M15 15h2"/>',
             'users' => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
             'shield' => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>',
             'key' => '<circle cx="8" cy="15" r="4"/><path d="M11 12 21 2"/><path d="m17 6 3 3"/><path d="m14 9 3 3"/>',
@@ -353,7 +362,7 @@
                     <div class="border-b border-slate-100 bg-slate-950 px-4 py-3 text-white">
                         <div class="flex items-center justify-between gap-3">
                             <div>
-                                <p class="text-xs font-black uppercase tracking-widest text-indigo-200">IKOMEZA</p>
+                                <p class="text-xs font-black uppercase tracking-widest text-indigo-200">FRONTIER</p>
                                 <p class="text-base font-black">Mobile menu</p>
                             </div>
                             <span class="rounded-full bg-white/10 px-3 py-1 text-[11px] font-black">

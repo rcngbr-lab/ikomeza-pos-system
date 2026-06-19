@@ -23,7 +23,7 @@
 
     <div class="header">
         <div>
-            <div style="font-weight:900; letter-spacing:.08em;">IKOMEZA POS</div>
+            <div style="font-weight:900; letter-spacing:.08em;">FRONTIER POS</div>
             <h1>Audit Logs Report</h1>
         </div>
         <div class="meta">

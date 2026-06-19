@@ -17,7 +17,7 @@
 
     <title>
 
-        IKOMEZA POS
+        FRONTIER POS
 
     </title>
 

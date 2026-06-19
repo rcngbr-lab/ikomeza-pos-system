@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'IKOMEZA POS') }}</title>
+    <title>{{ config('app.name', 'FRONTIER POS') }}</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -16,28 +16,28 @@
         posKiosk: false,
         sidebarCollapsed: false,
         init() {
-            const saved = localStorage.getItem('ikomeza.sidebar');
+            const saved = localStorage.getItem('frontier.sidebar');
             this.sidebarCollapsed = saved
                 ? saved === 'collapsed'
                 : (@js(request()->routeIs('pos.*')) && window.matchMedia('(max-width: 1280px)').matches);
 
             this.posKiosk = this.isPosRoute
-                && localStorage.getItem('ikomeza.pos.kiosk') === 'enabled'
+                && localStorage.getItem('frontier.pos.kiosk') === 'enabled'
                 && Boolean(document.fullscreenElement);
 
             if (this.isPosRoute && !document.fullscreenElement) {
-                localStorage.setItem('ikomeza.pos.kiosk', 'disabled');
+                localStorage.setItem('frontier.pos.kiosk', 'disabled');
             }
 
             document.addEventListener('fullscreenchange', () => {
                 if (this.isPosRoute && !document.fullscreenElement && this.posKiosk) {
                     this.posKiosk = false;
-                    localStorage.setItem('ikomeza.pos.kiosk', 'disabled');
+                    localStorage.setItem('frontier.pos.kiosk', 'disabled');
                 }
 
                 if (this.isPosRoute && document.fullscreenElement) {
                     this.posKiosk = true;
-                    localStorage.setItem('ikomeza.pos.kiosk', 'enabled');
+                    localStorage.setItem('frontier.pos.kiosk', 'enabled');
                 }
 
                 this.$nextTick(() => window.dispatchEvent(new Event('resize')));
@@ -45,7 +45,7 @@
         },
         toggleSidebar() {
             this.sidebarCollapsed = !this.sidebarCollapsed;
-            localStorage.setItem('ikomeza.sidebar', this.sidebarCollapsed ? 'collapsed' : 'expanded');
+            localStorage.setItem('frontier.sidebar', this.sidebarCollapsed ? 'collapsed' : 'expanded');
         },
         async togglePosKiosk() {
             if (!this.isPosRoute) {
@@ -56,7 +56,7 @@
                 if (!this.posKiosk && !document.fullscreenElement) {
                     await document.documentElement.requestFullscreen();
                     this.posKiosk = true;
-                    localStorage.setItem('ikomeza.pos.kiosk', 'enabled');
+                    localStorage.setItem('frontier.pos.kiosk', 'enabled');
                     this.$nextTick(() => window.dispatchEvent(new Event('resize')));
                     return;
                 }
@@ -67,11 +67,11 @@
                 }
             } catch (error) {
                 this.posKiosk = false;
-                localStorage.setItem('ikomeza.pos.kiosk', 'disabled');
+                localStorage.setItem('frontier.pos.kiosk', 'disabled');
             }
 
             this.posKiosk = false;
-            localStorage.setItem('ikomeza.pos.kiosk', 'disabled');
+            localStorage.setItem('frontier.pos.kiosk', 'disabled');
             this.$nextTick(() => window.dispatchEvent(new Event('resize')));
         }
     }"

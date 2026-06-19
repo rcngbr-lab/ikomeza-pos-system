@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-echo "Starting IKOMEZA POS on Railway..."
+echo "Starting FRONTIER POS on Railway..."
 
 if [ -z "${APP_KEY:-}" ]; then
     APP_KEY="$(php -r 'echo "base64:".base64_encode(random_bytes(32));')"
@@ -37,5 +37,5 @@ php artisan pos:prepare-runtime --no-interaction
 php artisan pos:production-preflight --warn-only --no-interaction
 php artisan migrate --force --no-interaction
 
-echo "Serving IKOMEZA POS on 0.0.0.0:${PORT:-8080}"
+echo "Serving FRONTIER POS on 0.0.0.0:${PORT:-8080}"
 exec php -d variables_order=EGPCS artisan serve --host=0.0.0.0 --port="${PORT:-8080}"

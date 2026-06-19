@@ -244,7 +244,7 @@
     <main class="sheet">
         <header class="topline">
             <div>
-                <div class="brand">IKOMEZA POS</div>
+                <div class="brand">FRONTIER POS</div>
                 <div class="muted">Business operations control center</div>
             </div>
             <div style="text-align:right">

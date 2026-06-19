@@ -30,7 +30,7 @@
 <body onload="window.print()">
     <div class="header">
         <div>
-            <div class="brand">IKOMEZA POS</div>
+            <div class="brand">FRONTIER POS</div>
             <h1>Shift Financial Report</h1>
             <p class="muted">Generated: {{ now()->format('Y-m-d H:i') }}</p>
         </div>

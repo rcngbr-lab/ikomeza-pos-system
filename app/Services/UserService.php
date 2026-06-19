@@ -108,11 +108,11 @@ class UserService
         if (
             $user
             && $user->email
-            && !str_ends_with(Str::lower($user->email), '@ikomeza.local')
+            && !str_ends_with(Str::lower($user->email), '@frontier.local')
         ) {
             return $user->email;
         }
 
-        return $data['username'] . '@ikomeza.local';
+        return $data['username'] . '@frontier.local';
     }
 }

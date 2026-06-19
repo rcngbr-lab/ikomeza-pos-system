@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'IKOMEZA POS') }}</title>
+        <title>{{ config('app.name', 'FRONTIER POS') }}</title>
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800,900&display=swap" rel="stylesheet" />
@@ -50,6 +50,12 @@
                 font-weight: 900;
                 letter-spacing: 0;
                 box-shadow: 0 18px 40px rgba(79, 70, 229, 0.25);
+            }
+
+            .auth-mark img {
+                width: 58px;
+                height: 58px;
+                object-fit: contain;
             }
 
             .auth-title {
@@ -131,11 +137,11 @@
         <main class="auth-shell">
             <section class="auth-panel">
                 <div class="auth-brand">
-                    <a href="/" class="auth-mark" aria-label="IKOMEZA POS">
-                        POS
+                    <a href="/" class="auth-mark" aria-label="FRONTIER POS">
+                        <img src="{{ asset('images/frontier-logo.png') }}" alt="Frontier POS">
                     </a>
                     <h1 class="auth-title">
-                        IKOMEZA POS
+                        FRONTIER POS
                     </h1>
                     <p class="auth-subtitle">
                         Secure business operations access

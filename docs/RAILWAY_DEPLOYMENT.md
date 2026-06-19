@@ -1,8 +1,8 @@
-# IKOMEZA POS Railway Deployment
+# FRONTIER POS Railway Deployment
 
 ## Current Cloud Startup
 
-Railway starts IKOMEZA POS through:
+Railway starts FRONTIER POS through:
 
 ```bash
 sh scripts/railway-start.sh
@@ -46,7 +46,7 @@ Also keep:
 APP_ENV=production
 APP_DEBUG=false
 APP_KEY=base64:...
-APP_URL=https://ikomeza-pos-system-production.up.railway.app
+APP_URL=https://frontier-pos-system-production.up.railway.app
 SESSION_DRIVER=database
 SESSION_SECURE_COOKIE=true
 ENABLE_DEMO_ACCOUNTS=false

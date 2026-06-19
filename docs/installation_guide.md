@@ -1,4 +1,4 @@
-# IKOMEZA POS Installation Guide
+# FRONTIER POS Installation Guide
 
 ## Production Database
 
@@ -71,4 +71,4 @@ Never enable demo flags in production.
 
 ## Railway Database Notes
 
-If Railway shows `connection to server at "127.0.0.1", port 5432 failed`, the app does not have a real PostgreSQL service attached or the service variables are not exposed to the app. Add a Railway PostgreSQL service and expose `DATABASE_URL` or `PGHOST/PGPORT/PGDATABASE/PGUSER/PGPASSWORD` to the IKOMEZA POS service.
+If Railway shows `connection to server at "127.0.0.1", port 5432 failed`, the app does not have a real PostgreSQL service attached or the service variables are not exposed to the app. Add a Railway PostgreSQL service and expose `DATABASE_URL` or `PGHOST/PGPORT/PGDATABASE/PGUSER/PGPASSWORD` to the FRONTIER POS service.

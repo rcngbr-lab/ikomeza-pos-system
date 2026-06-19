@@ -29,6 +29,7 @@ use App\Http\Controllers\OrderTicketController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\AccountsReceivableController;
 use App\Http\Controllers\PaymentReconciliationController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\ErrorEventController;
@@ -116,6 +117,19 @@ Route::middleware([
         [CustomerController::class, 'payment']
     )->name('customers.payment')
     ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER,CASHIER');
+
+    Route::prefix('receivables')
+        ->name('receivables.')
+        ->middleware('operational.role:ADMIN,ADMINISTRATOR,MANAGER')
+        ->group(function () {
+            Route::get('/', [AccountsReceivableController::class, 'index'])->name('index');
+            Route::post('/customers/{customer}/profile', [AccountsReceivableController::class, 'updateProfile'])->name('customers.profile');
+            Route::post('/customers/{customer}/payment', [AccountsReceivableController::class, 'payment'])->name('customers.payment');
+            Route::post('/customers/{customer}/collection', [AccountsReceivableController::class, 'collection'])->name('customers.collection');
+            Route::get('/customers/{customer}/statement', [AccountsReceivableController::class, 'statement'])->name('customers.statement');
+            Route::post('/approvals/{approvalRequest}/approve', [AccountsReceivableController::class, 'approve'])->name('approvals.approve');
+            Route::post('/approvals/{approvalRequest}/reject', [AccountsReceivableController::class, 'reject'])->name('approvals.reject');
+        });
 
     /*
     |--------------------------------------------------------------------------

@@ -463,7 +463,7 @@ return new class extends Migration
         }
 
         $settings = [
-            ['key' => 'business_name', 'value' => 'IKOMEZA POS', 'type' => 'string', 'group' => 'business', 'label' => 'Business Name'],
+            ['key' => 'business_name', 'value' => 'FRONTIER POS', 'type' => 'string', 'group' => 'business', 'label' => 'Business Name'],
             ['key' => 'business_tin', 'value' => null, 'type' => 'string', 'group' => 'tax', 'label' => 'Rwanda TIN'],
             ['key' => 'vat_enabled', 'value' => '1', 'type' => 'boolean', 'group' => 'tax', 'label' => 'VAT Enabled'],
             ['key' => 'vat_rate', 'value' => '18', 'type' => 'decimal', 'group' => 'tax', 'label' => 'VAT Rate'],

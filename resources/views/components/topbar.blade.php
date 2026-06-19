@@ -26,7 +26,7 @@
 
             <div class="lg:hidden">
                 <h1 class="text-base font-black leading-none tracking-tight text-indigo-600">
-                    IKOMEZA
+                    FRONTIER
                 </h1>
             </div>
 

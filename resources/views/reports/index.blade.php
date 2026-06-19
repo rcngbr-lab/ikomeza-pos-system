@@ -238,7 +238,7 @@
 <section class="print-report">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #0f172a;padding-bottom:8px;">
         <div>
-            <h1 style="font-size:22px;margin:0;">IKOMEZA POS REPORT</h1>
+            <h1 style="font-size:22px;margin:0;">FRONTIER POS REPORT</h1>
             <p style="margin:4px 0 0;">Generated: {{ now()->format('Y-m-d H:i') }}</p>
         </div>
         <div style="text-align:right;">
